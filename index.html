@@ -411,15 +411,40 @@
       return images;
     }
 
-    // Convert Image file to base64
+    // Convert Image file to base64 with auto-scaling to prevent memory overflow
     function convertImageToBase64(file) {
       return new Promise((resolve, reject) => {
         const reader = new FileReader();
-        reader.onload = () => {
-          const dataUrl = reader.result;
-          const b64 = dataUrl.split(',')[1];
-          const mimeType = file.type || 'image/jpeg';
-          resolve([{ pageNum: 1, b64, mimeType }]);
+        reader.onload = (e) => {
+          const img = new Image();
+          img.onload = () => {
+            const maxDim = 2400;
+            let w = img.width;
+            let h = img.height;
+            if (w > maxDim || h > maxDim) {
+              if (w > h) {
+                h = Math.round((h * maxDim) / w);
+                w = maxDim;
+              } else {
+                w = Math.round((w * maxDim) / h);
+                h = maxDim;
+              }
+            }
+            const canvas = document.createElement('canvas');
+            canvas.width = w;
+            canvas.height = h;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, w, h);
+            const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
+            const b64 = dataUrl.split(',')[1];
+            resolve([{ pageNum: 1, b64, mimeType: 'image/jpeg' }]);
+          };
+          img.onerror = () => {
+            const dataUrl = reader.result;
+            const b64 = dataUrl.split(',')[1];
+            resolve([{ pageNum: 1, b64, mimeType: file.type || 'image/jpeg' }]);
+          };
+          img.src = e.target.result;
         };
         reader.onerror = reject;
         reader.readAsDataURL(file);
@@ -432,13 +457,14 @@
 Nhiệm vụ của bạn là đọc hình ảnh trang tài liệu này và chuyển đổi thành cấu trúc JSON chuẩn xác 100% để tạo file Word (.docx).
 
 YÊU CẦU ĐẶC BIỆT:
-1. Đọc đúng 100% chữ tiếng Việt có dấu, không bỏ sót chữ nào.
+1. Đọc đúng 100% chữ tiếng Việt có dấu, không bỏ sót chữ nào. Giữ nguyên các hàng chấm lửng (..............) dùng để điền thông tin nếu bản gốc có. Đảm bảo các vế trên cùng một dòng được giữ nguyên trên cùng một dòng (ví dụ: "Tôi là: ........................, sinh ngày ....................").
 2. Nhận diện thể thức văn bản:
    - Nếu là phần đầu có Quốc hiệu/Tiêu ngữ và Đơn vị ban hành: phân tách thành "type": "header_table" với 2 cột left và right.
    - Nếu là Tiêu đề: "type": "heading", level 1, bold true, align center.
    - Nếu là Đoạn văn: "type": "paragraph", align "justify", first_indent 28, chứa các "runs" với bold, italic tương ứng.
    - Nếu là Bảng biểu: "type": "table", liệt kê các hàng "rows" với từng ô "cells" (kèm row, col, rowspan, colspan, text, align, bold). Đảm bảo giữ nguyên các từ không bị ngắt quãng vô lý (ví dụ: "không", "Lê Văn Hòa", ngày tháng "30/9/1960").
    - Nếu là Nơi nhận và Chữ ký: "type": "signature_block", gồm "recipients" và "signatory". Chừa khoảng trống cho chữ ký bằng {"is_space": true, "space": 35}.
+   - Nếu chỉ có Chữ ký người khai ở bên phải: đặt vào "signature_block" với "recipients": [] và "signatory" chứa ngày tháng, người khai, họ tên căn giữa ("align": "center").
 3. Xác định hướng trang:
    - QUAN TRỌNG: Nếu trang có bảng biểu nhiều cột (từ 6 cột trở lên, ví dụ danh sách Đảng viên, bảng thống kê) hoặc tài liệu dàn theo bề ngang: BẮT BUỘC đặt "orientation": "landscape".
    - Chỉ đặt "orientation": "portrait" khi là tài liệu văn bản đọc xuôi ít cột thông thường.
@@ -459,7 +485,7 @@ Trả về DUY NHẤT một khối mã JSON hợp lệ:
   "elements": []
 }`;
 
-      const candidateModels = ["gemini-3.8-flash", "gemini-flash-latest", "gemini-2.5-flash", "gemini-1.5-flash", "gemini-pro-latest"];
+      const candidateModels = ["gemini-3.8-flash", "gemini-flash-latest", "gemini-3.5-flash", "gemini-flash-lite-latest", "gemini-2.5-flash"];
       let lastError = null;
 
       for (const model of candidateModels) {
@@ -486,13 +512,19 @@ Trả về DUY NHẤT một khối mã JSON hợp lệ:
 
           if (resp.status === 200) {
             const data = await resp.json();
-            let text = data.candidates[0].content.parts[0].text.trim();
-            if (text.startsWith("```json")) text = text.slice(7);
-            else if (text.startsWith("```")) text = text.slice(3);
-            if (text.endsWith("```")) text = text.slice(0, -3);
-            return JSON.parse(text.trim());
+            const parts = data.candidates?.[0]?.content?.parts || [];
+            let fullText = "";
+            for (const p of parts) {
+              if (p.text) fullText += p.text;
+            }
+            fullText = fullText.trim();
+            const jsonMatch = fullText.match(/\{[\s\S]*\}/);
+            if (!jsonMatch) {
+              throw new Error("Không thể trích xuất cấu trúc dữ liệu từ kết quả AI.");
+            }
+            return JSON.parse(jsonMatch[0]);
           } else if (resp.status === 401) {
-            throw new Error("Khóa API Gemini không hợp lệ hoặc đã bị khóa (mã 401). Bạn hãy vào https://aistudio.google.com/apikey tạo khóa API mới miễn phí (bắt đầu bằng AIzaSy...) và dán lại nhé!");
+            throw new Error("Khóa API Gemini không hợp lệ hoặc đã bị khóa (mã 401). Bạn hãy vào https://aistudio.google.com/apikey tạo khóa API mới miễn phí và dán lại nhé!");
           } else {
             const errText = await resp.text();
             lastError = `Model ${model} báo lỗi (${resp.status}): ${errText}`;
@@ -680,7 +712,7 @@ Trả về DUY NHẤT một khối mã JSON hợp lệ:
               for (let cPos = 0; cPos < numCols; cPos++) {
                 const cellInfo = cells[cPos] || { text: '' };
                 const text = cellInfo.text || '';
-                const isTemplateLabel = (!hasBorder && (text.includes('Mẫu') && numRows === 1 && numCols === 2 && cPos === 1));
+                const isTemplateLabel = (!hasBorder && (text.toLowerCase().includes('mẫu') && numRows === 1 && numCols === 2));
 
                 const cellBorder = isTemplateLabel ? {
                   top: singleBorder, bottom: singleBorder, left: singleBorder, right: singleBorder
@@ -721,6 +753,9 @@ Trả về DUY NHẤT một khối mã JSON hợp lệ:
                 rowCells.push(new TableCell({
                   width: { size: colWidths[cPos] || 1000, type: WidthType.DXA },
                   borders: cellBorder,
+                  columnSpan: (cellInfo.colspan && cellInfo.colspan > 1) ? cellInfo.colspan : undefined,
+                  rowSpan: (cellInfo.rowspan && cellInfo.rowspan > 1) ? cellInfo.rowspan : undefined,
+                  margins: { top: 60, bottom: 60, left: 80, right: 80 },
                   children: cellChildren
                 }));
               }
