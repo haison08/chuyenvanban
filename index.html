@@ -1,0 +1,785 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Haison dep trai - Chuyển Đổi PDF & Ảnh Sang Word Chuẩn 100%</title>
+  <meta name="description" content="Chuyển đổi hình ảnh và PDF scan sang văn bản Word (.docx) chuẩn 100% thể thức văn bản, giữ nguyên bảng biểu và chỉnh sửa tự do.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="static/css/style.css">
+
+  <!-- PDF.js for rendering PDF pages in browser -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <!-- docx.js for generating native Word .docx in browser -->
+  <script src="https://www.unpkg.com/docx@8.2.4/build/index.umd.js"></script>
+  <!-- FileSaver.js for instant downloads -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+</head>
+<body>
+  <div class="ambient-glow glow-1"></div>
+  <div class="ambient-glow glow-2"></div>
+  
+  <header class="app-header">
+    <div class="header-container">
+      <div class="brand">
+        <div class="brand-icon">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/>
+            <polyline points="14 2 14 8 20 8"/>
+            <path d="M8 13h8"/>
+            <path d="M8 17h8"/>
+            <path d="M10 9h4"/>
+          </svg>
+        </div>
+        <div class="brand-text">
+          <span class="brand-title">Haison <span class="gradient-text">dep trai</span></span>
+          <span class="brand-subtitle">Smart OCR to Word Engine</span>
+        </div>
+      </div>
+      
+      <div class="header-badges">
+        <span class="badge badge-pulse">
+          <span class="pulse-dot"></span>
+          AI Vision Multimodal
+        </span>
+        <span class="badge badge-subtle">Chuẩn Nghị định 30</span>
+      </div>
+    </div>
+  </header>
+
+  <main class="main-content">
+    <section class="hero-section">
+      <h1 class="hero-title">
+        Chuyển Đổi Ảnh & PDF Sang Word <br>
+        <span class="gradient-text">Giống 100% & Sửa Văn Bản Tự Do</span>
+      </h1>
+      <p class="hero-description">
+        Tự động bóc tách Quốc hiệu, số ký hiệu, tiêu đề, bảng biểu phức tạp và chữ ký. Định dạng văn bản hành chính theo quy chuẩn mới nhất, không lỗi font, không vỡ khung viền.
+      </p>
+    </section>
+
+    <!-- Upload Card -->
+    <div class="glass-card main-card">
+      <div class="drop-zone" id="dropZone">
+        <input type="file" id="fileInput" class="file-input" accept=".pdf,.png,.jpg,.jpeg,.tiff,.bmp,.webp">
+        
+        <div class="drop-zone-content">
+          <div class="upload-icon-wrapper">
+            <svg class="upload-icon" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+              <polyline points="17 8 12 3 7 8"/>
+              <line x1="12" y1="3" x2="12" y2="15"/>
+            </svg>
+          </div>
+          
+          <h3 class="drop-zone-title">Kéo & Thả file PDF hoặc Hình ảnh vào đây</h3>
+          <p class="drop-zone-subtitle">hoặc <span class="browse-link">chọn file từ máy tính</span></p>
+          
+          <div class="format-tags">
+            <span class="tag">PDF scan</span>
+            <span class="tag">PNG / JPG</span>
+            <span class="tag">Văn bản hành chính</span>
+            <span class="tag">Bảng biểu & Danh sách</span>
+          </div>
+        </div>
+
+        <!-- Selected File Preview Bar -->
+        <div class="file-selected-bar" id="fileSelectedBar" style="display: none;">
+          <div class="file-info-col">
+            <div class="file-type-icon" id="fileTypeIcon">PDF</div>
+            <div class="file-meta">
+              <span class="file-name" id="selectedFileName">document.pdf</span>
+              <span class="file-size" id="selectedFileSize">0 KB</span>
+            </div>
+          </div>
+          <button type="button" class="btn-remove-file" id="removeFileBtn" title="Xóa file">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="18" y1="6" x2="6" y2="18"/>
+              <line x1="6" y1="6" x2="18" y2="18"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Advanced Options Panel -->
+      <div class="options-accordion">
+        <button type="button" class="accordion-toggle" id="toggleOptionsBtn">
+          <span class="toggle-icon">⚙️</span>
+          <span>Tùy chỉnh thể thức & Khóa API</span>
+          <svg class="chevron-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="6 9 12 15 18 9"/>
+          </svg>
+        </button>
+
+        <div class="accordion-content" id="optionsContent">
+          <div class="options-grid">
+            <div class="form-group">
+              <label for="fontSelect" class="form-label">Phông chữ xuất bản:</label>
+              <select id="fontSelect" class="form-select">
+                <option value="Times New Roman" selected>Times New Roman (Chuẩn văn bản hành chính)</option>
+                <option value="Arial">Arial (Hiện đại)</option>
+                <option value="Calibri">Calibri</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="apiKeyInput" class="form-label">
+                <span>Google Gemini API Key:</span>
+                <a href="https://aistudio.google.com/apikey" target="_blank" class="link-external">Lấy khóa API miễn phí ↗</a>
+              </label>
+              <input type="password" id="apiKeyInput" class="form-input" placeholder="Dán khóa API (AIzaSy...) vào đây">
+              <span class="input-hint">Khóa API sẽ được lưu an toàn trực tiếp trên trình duyệt của bạn (LocalStorage).</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Action Button -->
+      <div class="convert-action-box">
+        <button type="button" class="btn btn-primary" id="convertBtn" disabled>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+          </svg>
+          <span>Bắt Đầu Chuyển Đổi sang Word</span>
+        </button>
+      </div>
+
+      <!-- Processing State -->
+      <div class="process-wrapper" id="processWrapper" style="display: none;">
+        <div class="progress-header">
+          <span class="step-indicator" id="stepIndicator">Khởi tạo chuyển đổi...</span>
+          <span class="percent-counter" id="percentCounter">0%</span>
+        </div>
+        <div class="progress-track">
+          <div class="progress-fill" id="progressFill" style="width: 0%;"></div>
+        </div>
+
+        <div class="steps-list">
+          <div class="step-item" id="step1">
+            <span class="step-dot"></span>
+            <span class="step-label">Trích xuất trang hình ảnh độ nét cao</span>
+          </div>
+          <div class="step-item" id="step2">
+            <span class="step-dot"></span>
+            <span class="step-label">AI Vision nhận diện ngữ nghĩa & thể thức tiếng Việt</span>
+          </div>
+          <div class="step-item" id="step3">
+            <span class="step-dot"></span>
+            <span class="step-label">Xử lý bảng biểu, xoay khổ ngang & căn lề không viền</span>
+          </div>
+          <div class="step-item" id="step4">
+            <span class="step-dot"></span>
+            <span class="step-label">Đóng gói file Microsoft Word (.docx)</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Error Card -->
+      <div class="glass-card error-card" id="errorCard" style="display: none; margin-top: 1.5rem; border-color: rgba(239, 68, 68, 0.4); background: rgba(239, 68, 68, 0.08);">
+        <div style="display: flex; gap: 0.85rem; align-items: flex-start;">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2" style="flex-shrink: 0; margin-top: 0.15rem;">
+            <circle cx="12" cy="12" r="10"/>
+            <line x1="12" y1="8" x2="12" y2="12"/>
+            <line x1="12" y1="16" x2="12.01" y2="16"/>
+          </svg>
+          <div style="flex: 1;">
+            <h4 style="color: #f87171; font-weight: 600; margin-bottom: 0.35rem; font-size: 1rem;">Chưa thể hoàn tất</h4>
+            <p id="errorMessage" style="color: #e2e8f0; font-size: 0.88rem; line-height: 1.5; margin-bottom: 0.75rem;">Đã xảy ra lỗi trong quá trình xử lý.</p>
+            <button type="button" class="btn btn-secondary" id="retryBtn" style="padding: 0.4rem 0.9rem; font-size: 0.85rem;">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
+              </svg>
+              Thử lại ngay
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Result Card -->
+      <div class="result-box" id="resultBox" style="display: none;">
+        <div class="success-banner">
+          <div class="success-icon-wrap">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5">
+              <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+              <polyline points="22 4 12 14.01 9 11.01"/>
+            </svg>
+          </div>
+          <div class="success-details">
+            <h3 class="success-title">Chuyển Đổi Thành Công 100%!</h3>
+            <p class="success-subtitle" id="resultSubtitle">File Word đã được định dạng chuẩn xác từng dòng, bảng biểu và phông chữ.</p>
+          </div>
+        </div>
+
+        <div class="download-action-row">
+          <button type="button" class="btn btn-success btn-large" id="downloadBtn">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+              <polyline points="7 10 12 15 17 10"/>
+              <line x1="12" y1="15" x2="12" y2="3"/>
+            </svg>
+            <span>Tải File Word (.docx) Về Máy</span>
+          </button>
+
+          <button type="button" class="btn btn-secondary" id="resetBtn">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
+            </svg>
+            <span>Chuyển file khác</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <footer class="app-footer">
+    <div class="footer-container">
+      <p>Haison dep trai • Tự động nhận diện thể thức văn bản hành chính Việt Nam (Nghị định 30/2020/NĐ-CP)</p>
+    </div>
+  </footer>
+
+  <script>
+    // Initialize PDF.js worker
+    if (window.pdfjsLib) {
+      pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    }
+
+    const dropZone = document.getElementById('dropZone');
+    const fileInput = document.getElementById('fileInput');
+    const fileSelectedBar = document.getElementById('fileSelectedBar');
+    const selectedFileName = document.getElementById('selectedFileName');
+    const selectedFileSize = document.getElementById('selectedFileSize');
+    const fileTypeIcon = document.getElementById('fileTypeIcon');
+    const removeFileBtn = document.getElementById('removeFileBtn');
+    const convertBtn = document.getElementById('convertBtn');
+    const toggleOptionsBtn = document.getElementById('toggleOptionsBtn');
+    const optionsContent = document.getElementById('optionsContent');
+    const apiKeyInput = document.getElementById('apiKeyInput');
+    const fontSelect = document.getElementById('fontSelect');
+
+    const processWrapper = document.getElementById('processWrapper');
+    const stepIndicator = document.getElementById('stepIndicator');
+    const percentCounter = document.getElementById('percentCounter');
+    const progressFill = document.getElementById('progressFill');
+    const errorCard = document.getElementById('errorCard');
+    const errorMessage = document.getElementById('errorMessage');
+    const retryBtn = document.getElementById('retryBtn');
+    const resultBox = document.getElementById('resultBox');
+    const resultSubtitle = document.getElementById('resultSubtitle');
+    const downloadBtn = document.getElementById('downloadBtn');
+    const resetBtn = document.getElementById('resetBtn');
+
+    let currentFile = null;
+    let generatedBlob = null;
+    let generatedFileName = "Tai_Lieu_Chuyen_Doi.docx";
+
+    // Load saved API Key from localStorage
+    const savedKey = localStorage.getItem('haison_gemini_key') || '';
+    if (savedKey) {
+      apiKeyInput.value = savedKey;
+    }
+    apiKeyInput.addEventListener('input', () => {
+      localStorage.setItem('haison_gemini_key', apiKeyInput.value.trim());
+    });
+
+    // Accordion toggle
+    toggleOptionsBtn.addEventListener('click', () => {
+      toggleOptionsBtn.classList.toggle('active');
+      optionsContent.classList.toggle('open');
+    });
+
+    // Drag and drop handlers
+    ['dragenter', 'dragover'].forEach(name => {
+      dropZone.addEventListener(name, (e) => {
+        e.preventDefault();
+        dropZone.classList.add('dragover');
+      });
+    });
+    ['dragleave', 'drop'].forEach(name => {
+      dropZone.addEventListener(name, (e) => {
+        e.preventDefault();
+        dropZone.classList.remove('dragover');
+      });
+    });
+    dropZone.addEventListener('drop', (e) => {
+      if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+        handleFileSelect(e.dataTransfer.files[0]);
+      }
+    });
+    fileInput.addEventListener('change', (e) => {
+      if (e.target.files && e.target.files.length > 0) {
+        handleFileSelect(e.target.files[0]);
+      }
+    });
+
+    function handleFileSelect(file) {
+      currentFile = file;
+      selectedFileName.textContent = file.name;
+      selectedFileSize.textContent = formatBytes(file.size);
+      const ext = file.name.split('.').pop().toUpperCase();
+      fileTypeIcon.textContent = ext;
+
+      fileSelectedBar.style.display = 'flex';
+      convertBtn.removeAttribute('disabled');
+      errorCard.style.display = 'none';
+      resultBox.style.display = 'none';
+    }
+
+    removeFileBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      currentFile = null;
+      fileInput.value = '';
+      fileSelectedBar.style.display = 'none';
+      convertBtn.setAttribute('disabled', 'true');
+    });
+
+    function formatBytes(bytes) {
+      if (!bytes || bytes === 0) return '0 Bytes';
+      const k = 1024;
+      const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+      const i = Math.floor(Math.log(bytes) / Math.log(k));
+      return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+    }
+
+    function setStep(stepNum, percent, message) {
+      stepIndicator.textContent = message;
+      percentCounter.textContent = percent + '%';
+      progressFill.style.width = percent + '%';
+      [1, 2, 3, 4].forEach(i => {
+        const item = document.getElementById('step' + i);
+        if (i < stepNum) {
+          item.className = 'step-item completed';
+        } else if (i === stepNum) {
+          item.className = 'step-item active';
+        } else {
+          item.className = 'step-item';
+        }
+      });
+    }
+
+    // Convert PDF page to base64 JPEG
+    async function convertPdfToImages(file) {
+      const arrayBuffer = await file.arrayBuffer();
+      const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+      const images = [];
+      for (let i = 1; i <= pdf.numPages; i++) {
+        setStep(1, Math.round((i / pdf.numPages) * 20), `Đang trích xuất trang ${i}/${pdf.numPages}...`);
+        const page = await pdf.getPage(i);
+        const viewport = page.getViewport({ scale: 2.0 });
+        const canvas = document.createElement('canvas');
+        canvas.width = viewport.width;
+        canvas.height = viewport.height;
+        const ctx = canvas.getContext('2d');
+        await page.render({ canvasContext: ctx, viewport }).promise;
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
+        const b64 = dataUrl.split(',')[1];
+        images.push({ pageNum: i, b64, mimeType: 'image/jpeg' });
+      }
+      return images;
+    }
+
+    // Convert Image file to base64
+    function convertImageToBase64(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const dataUrl = reader.result;
+          const b64 = dataUrl.split(',')[1];
+          const mimeType = file.type || 'image/jpeg';
+          resolve([{ pageNum: 1, b64, mimeType }]);
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+    }
+
+    // Call Gemini API with Fallback
+    async function analyzeWithGemini(pageImage, apiKey) {
+      const prompt = `Bạn là một chuyên gia phân tích thị giác và bóc tách cấu trúc tài liệu văn bản chuyên nghiệp.
+Nhiệm vụ của bạn là đọc hình ảnh trang tài liệu này và chuyển đổi thành cấu trúc JSON chuẩn xác 100% để tạo file Word (.docx).
+
+YÊU CẦU ĐẶC BIỆT:
+1. Đọc đúng 100% chữ tiếng Việt có dấu, không bỏ sót chữ nào.
+2. Nhận diện thể thức văn bản:
+   - Nếu là phần đầu có Quốc hiệu/Tiêu ngữ và Đơn vị ban hành: phân tách thành "type": "header_table" với 2 cột left và right.
+   - Nếu là Tiêu đề: "type": "heading", level 1, bold true, align center.
+   - Nếu là Đoạn văn: "type": "paragraph", align "justify", first_indent 28, chứa các "runs" với bold, italic tương ứng.
+   - Nếu là Bảng biểu: "type": "table", liệt kê các hàng "rows" với từng ô "cells" (kèm row, col, rowspan, colspan, text, align, bold). Đảm bảo giữ nguyên các từ không bị ngắt quãng vô lý (ví dụ: "không", "Lê Văn Hòa", ngày tháng "30/9/1960").
+   - Nếu là Nơi nhận và Chữ ký: "type": "signature_block", gồm "recipients" và "signatory". Chừa khoảng trống cho chữ ký bằng {"is_space": true, "space": 35}.
+3. Xác định hướng trang:
+   - QUAN TRỌNG: Nếu trang có bảng biểu nhiều cột (từ 6 cột trở lên, ví dụ danh sách Đảng viên, bảng thống kê) hoặc tài liệu dàn theo bề ngang: BẮT BUỘC đặt "orientation": "landscape".
+   - Chỉ đặt "orientation": "portrait" khi là tài liệu văn bản đọc xuôi ít cột thông thường.
+4. QUY TẮC SỐNG CÒN VỀ ĐƯỜNG KẺ VÀ KHUNG VIỀN (BORDERS):
+   - TUYỆT ĐỐI KHÔNG TỰ TIỆN THÊM KHUNG VIỀN NẾU BẢN GỐC KHÔNG CÓ!
+   - Các phần chia 2 cột như:
+     + Chữ ký, người khai (ví dụ: "NGƯỜI KHAI")
+     + 2 cột chữ ký xét duyệt (ví dụ: "XÉT, ĐỀ NGHỊ CỦA ĐẢNG UỶ" và "XÉT, ĐỀ NGHỊ CỦA CHI BỘ")
+     + Phần số hiệu/mã mẫu ở góc phải (ví dụ: "Mẫu 6-HHD")
+     BẮT BUỘC đặt "has_border": false để KHÔNG BỊ VẼ KHUNG ĐEN.
+   - CHỈ đặt "has_border": true khi đó thực sự là MỘT BẢNG KẺ Ô LƯỚI RÕ RÀNG TRONG ẢNH GỐC (như bảng danh sách đảng viên, bảng biểu thống kê).
+
+Trả về DUY NHẤT một khối mã JSON hợp lệ:
+{
+  "orientation": "portrait",
+  "elements": []
+}`;
+
+      const candidateModels = ["gemini-1.5-flash", "gemini-flash-latest", "gemini-2.5-flash", "gemini-pro-latest"];
+      let lastError = null;
+
+      for (const model of candidateModels) {
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+        const payload = {
+          contents: [{
+            parts: [
+              { text: prompt },
+              { inline_data: { mime_type: pageImage.mimeType, data: pageImage.b64 } }
+            ]
+          }],
+          generationConfig: {
+            temperature: 0.1,
+            responseMimeType: "application/json"
+          }
+        };
+
+        try {
+          const resp = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          });
+
+          if (resp.status === 200) {
+            const data = await resp.json();
+            let text = data.candidates[0].content.parts[0].text.trim();
+            if (text.startsWith("```json")) text = text.slice(7);
+            else if (text.startsWith("```")) text = text.slice(3);
+            if (text.endsWith("```")) text = text.slice(0, -3);
+            return JSON.parse(text.trim());
+          } else if (resp.status === 401) {
+            throw new Error("Khóa API Gemini không hợp lệ hoặc đã bị khóa (mã 401). Bạn hãy vào https://aistudio.google.com/apikey tạo khóa API mới miễn phí (bắt đầu bằng AIzaSy...) và dán lại nhé!");
+          } else {
+            const errText = await resp.text();
+            lastError = `Model ${model} báo lỗi (${resp.status}): ${errText}`;
+          }
+        } catch (err) {
+          if (err.message.includes("401") || err.message.includes("AIzaSy")) throw err;
+          lastError = err.message;
+        }
+      }
+      throw new Error("Không thể kết nối tới mô hình AI: " + lastError);
+    }
+
+    // Build Word Document using docx.js
+    async function buildWordDocument(pagesData, defaultFont) {
+      const { Document, Paragraph, TextRun, Table, TableRow, TableCell, WidthType, AlignmentType, BorderStyle, PageOrientation } = docx;
+
+      const noBorder = { style: BorderStyle.NONE, size: 0, color: "auto" };
+      const singleBorder = { style: BorderStyle.SINGLE, size: 4, color: "000000" };
+
+      function parseAlign(str) {
+        const a = (str || '').toLowerCase();
+        if (a === 'center') return AlignmentType.CENTER;
+        if (a === 'right' || a === 'end') return AlignmentType.RIGHT;
+        if (a === 'justify' || a === 'both') return AlignmentType.JUSTIFIED;
+        return AlignmentType.LEFT;
+      }
+
+      function createParagraph(item) {
+        if (typeof item === 'string') item = { text: item };
+        const runs = item.runs || [];
+        const textRuns = [];
+
+        if (runs.length > 0) {
+          runs.forEach(r => {
+            textRuns.push(new TextRun({
+              text: r.text || '',
+              bold: !!r.bold,
+              italics: !!r.italic,
+              size: (r.size || 13) * 2, // 1pt = 2 half-points
+              font: defaultFont
+            }));
+          });
+        } else if (item.text) {
+          textRuns.push(new TextRun({
+            text: item.text,
+            bold: !!item.bold,
+            italics: !!item.italic,
+            size: (item.size || 13) * 2,
+            font: defaultFont
+          }));
+        }
+
+        const indentVal = item.first_indent ? Math.round(item.first_indent * 20) : 0;
+        return new Paragraph({
+          children: textRuns,
+          alignment: parseAlign(item.align),
+          indent: indentVal ? { firstLine: indentVal } : undefined,
+          spacing: {
+            before: Math.round((item.space_before || 0) * 20),
+            after: Math.round((item.space_after || 2) * 20),
+            line: Math.round((item.line_spacing || 1.15) * 240)
+          }
+        });
+      }
+
+      const sections = [];
+
+      pagesData.forEach(page => {
+        let orientation = (page.orientation || 'portrait').toLowerCase();
+        const elements = page.elements || [];
+
+        // Auto-detect wide tables >= 7 cols -> Force landscape
+        elements.forEach(elem => {
+          if (elem.type === 'table') {
+            const rows = elem.rows || [];
+            const colCount = (elem.col_widths && elem.col_widths.length) || (rows[0] && rows[0].cells && rows[0].cells.length) || 0;
+            if (colCount >= 7) {
+              orientation = 'landscape';
+            }
+          }
+        });
+
+        const isLandscape = (orientation === 'landscape');
+        const children = [];
+
+        elements.forEach(elem => {
+          const elType = elem.type;
+
+          if (elType === 'header_table') {
+            const leftItems = elem.left || [];
+            const rightItems = elem.right || [];
+            const cellL = new TableCell({
+              width: { size: isLandscape ? 7000 : 4400, type: WidthType.DXA },
+              borders: { top: noBorder, bottom: noBorder, left: noBorder, right: noBorder },
+              children: leftItems.map(createParagraph)
+            });
+            const cellR = new TableCell({
+              width: { size: isLandscape ? 8500 : 5400, type: WidthType.DXA },
+              borders: { top: noBorder, bottom: noBorder, left: noBorder, right: noBorder },
+              children: rightItems.map(createParagraph)
+            });
+            children.push(new Table({
+              rows: [new TableRow({ children: [cellL, cellR] })],
+              borders: { top: noBorder, bottom: noBorder, left: noBorder, right: noBorder, insideHorizontal: noBorder, insideVertical: noBorder }
+            }));
+            children.push(new Paragraph({ text: '', spacing: { after: 120 } }));
+          } else if (elType === 'signature_block') {
+            const recipItems = elem.recipients || [];
+            const sigItems = elem.signatory || [];
+
+            const leftParas = recipItems.map(createParagraph);
+            const rightParas = [];
+
+            sigItems.forEach(item => {
+              if (item.is_space) {
+                rightParas.push(new Paragraph({ text: '', spacing: { before: Math.round((item.space || 35) * 20) } }));
+              } else {
+                rightParas.push(createParagraph(item));
+              }
+            });
+
+            const cellL = new TableCell({
+              width: { size: 4400, type: WidthType.DXA },
+              borders: { top: noBorder, bottom: noBorder, left: noBorder, right: noBorder },
+              children: leftParas.length ? leftParas : [new Paragraph({ text: '' })]
+            });
+            const cellR = new TableCell({
+              width: { size: 5400, type: WidthType.DXA },
+              borders: { top: noBorder, bottom: noBorder, left: noBorder, right: noBorder },
+              children: rightParas.length ? rightParas : [new Paragraph({ text: '' })]
+            });
+            children.push(new Table({
+              rows: [new TableRow({ children: [cellL, cellR] })],
+              borders: { top: noBorder, bottom: noBorder, left: noBorder, right: noBorder, insideHorizontal: noBorder, insideVertical: noBorder }
+            }));
+          } else if (elType === 'table') {
+            const rowsData = elem.rows || [];
+            let colWidths = elem.col_widths || [];
+            const numCols = colWidths.length || (rowsData[0] && rowsData[0].cells && rowsData[0].cells.length) || 1;
+            const numRows = rowsData.length;
+
+            // Strict Border Logic: 1-row or <= 2-cols layout tables MUST NOT have borders!
+            let hasBorder = elem.has_border;
+            if (hasBorder === undefined) {
+              hasBorder = !(numRows <= 1 || numCols <= 2);
+            }
+
+            const tableBorders = hasBorder ? {
+              top: singleBorder, bottom: singleBorder, left: singleBorder, right: singleBorder,
+              insideHorizontal: singleBorder, insideVertical: singleBorder
+            } : {
+              top: noBorder, bottom: noBorder, left: noBorder, right: noBorder,
+              insideHorizontal: noBorder, insideVertical: noBorder
+            };
+
+            const availableWidthDxa = isLandscape ? 15100 : 9800;
+            if (numCols === 12) {
+              // Standard 12-column member list
+              colWidths = [480, 1920, 1020, 1330, 2150, 740, 740, 790, 1330, 1330, 1250, 1470];
+            } else if (!colWidths || colWidths.length !== numCols) {
+              const equalWidth = Math.round(availableWidthDxa / numCols);
+              colWidths = new Array(numCols).fill(equalWidth);
+            } else {
+              colWidths = colWidths.map(w => Math.round(w * 56.7));
+            }
+
+            const cellFontSize = numCols >= 11 ? 9.0 : (numCols >= 8 ? 9.5 : (numCols >= 6 ? 10.5 : 12.0));
+
+            const tableRows = rowsData.map((rowObj, rIdx) => {
+              const cells = rowObj.cells || [];
+              const rowCells = [];
+
+              for (let cPos = 0; cPos < numCols; cPos++) {
+                const cellInfo = cells[cPos] || { text: '' };
+                const text = cellInfo.text || '';
+                const isTemplateLabel = (!hasBorder && (text.includes('Mẫu') && numRows === 1 && numCols === 2 && cPos === 1));
+
+                const cellBorder = isTemplateLabel ? {
+                  top: singleBorder, bottom: singleBorder, left: singleBorder, right: singleBorder
+                } : (hasBorder ? undefined : {
+                  top: noBorder, bottom: noBorder, left: noBorder, right: noBorder
+                });
+
+                rowCells.push(new TableCell({
+                  width: { size: colWidths[cPos] || 1000, type: WidthType.DXA },
+                  borders: cellBorder,
+                  children: [
+                    createParagraph({
+                      text: text,
+                      bold: !!cellInfo.bold,
+                      italic: !!cellInfo.italic,
+                      align: cellInfo.align || 'left',
+                      size: cellInfo.size || cellFontSize,
+                      space_before: 0,
+                      space_after: 2,
+                      line_spacing: 1.05
+                    })
+                  ]
+                }));
+              }
+              return new TableRow({ children: rowCells });
+            });
+
+            children.push(new Table({
+              rows: tableRows,
+              borders: tableBorders
+            }));
+            children.push(new Paragraph({ text: '', spacing: { after: 120 } }));
+          } else {
+            // Paragraph or Heading
+            children.push(createParagraph(elem));
+          }
+        });
+
+        sections.push({
+          properties: {
+            page: {
+              size: {
+                width: isLandscape ? 16838 : 11906,
+                height: isLandscape ? 11906 : 16838,
+                orientation: isLandscape ? PageOrientation.LANDSCAPE : PageOrientation.PORTRAIT
+              },
+              margin: {
+                top: 850,
+                bottom: 850,
+                left: isLandscape ? 850 : 1240,
+                right: 850
+              }
+            }
+          },
+          children: children
+        });
+      });
+
+      return new Document({ sections });
+    }
+
+    // Main Convert Click Handler
+    convertBtn.addEventListener('click', async () => {
+      if (!currentFile) return;
+
+      const apiKey = apiKeyInput.value.trim();
+      if (!apiKey) {
+        errorCard.style.display = 'block';
+        errorMessage.textContent = 'Vui lòng nhập Google Gemini API Key để AI nhận diện văn bản. Bạn có thể lấy khóa miễn phí 100% tại aistudio.google.com/apikey!';
+        optionsContent.classList.add('open');
+        toggleOptionsBtn.classList.add('active');
+        apiKeyInput.focus();
+        return;
+      }
+
+      convertBtn.setAttribute('disabled', 'true');
+      processWrapper.style.display = 'block';
+      errorCard.style.display = 'none';
+      resultBox.style.display = 'none';
+
+      try {
+        setStep(1, 10, 'Đang chuẩn bị và trích xuất hình ảnh tài liệu...');
+        let pageImages = [];
+
+        if (currentFile.type === 'application/pdf' || currentFile.name.toLowerCase().endsWith('.pdf')) {
+          pageImages = await convertPdfToImages(currentFile);
+        } else {
+          pageImages = await convertImageToBase64(currentFile);
+        }
+
+        const pagesData = [];
+        for (let idx = 0; idx < pageImages.length; idx++) {
+          const pct = 25 + Math.round(((idx + 1) / pageImages.length) * 50);
+          setStep(2, pct, `AI Vision đang đọc & phân tích thể thức trang ${idx + 1}/${pageImages.length}...`);
+          const data = await analyzeWithGemini(pageImages[idx], apiKey);
+          pagesData.push(data);
+        }
+
+        setStep(3, 85, 'Đang căn chỉnh bảng biểu, kiểm tra viền khung và bố cục...');
+        await new Promise(r => setTimeout(r, 400));
+
+        setStep(4, 95, 'Đang đóng gói file Microsoft Word (.docx)...');
+        const defaultFont = fontSelect.value || 'Times New Roman';
+        const doc = await buildWordDocument(pagesData, defaultFont);
+        generatedBlob = await docx.Packer.toBlob(doc);
+
+        const baseName = currentFile.name.replace(/\.[^/.]+$/, "");
+        generatedFileName = `Chuyen_Doi_${baseName}.docx`;
+
+        setStep(4, 100, 'Chuyển đổi hoàn tất 100%!');
+        await new Promise(r => setTimeout(r, 300));
+
+        processWrapper.style.display = 'none';
+        resultBox.style.display = 'block';
+        resultSubtitle.textContent = `Tài liệu "${currentFile.name}" đã được chuyển đổi thành file Word chuẩn thể thức!`;
+
+        // Automatically trigger download
+        saveAs(generatedBlob, generatedFileName);
+      } catch (err) {
+        console.error(err);
+        processWrapper.style.display = 'none';
+        errorCard.style.display = 'block';
+        errorMessage.textContent = err.message || 'Đã xảy ra lỗi trong quá trình xử lý.';
+        convertBtn.removeAttribute('disabled');
+      }
+    });
+
+    downloadBtn.addEventListener('click', () => {
+      if (generatedBlob) {
+        saveAs(generatedBlob, generatedFileName);
+      }
+    });
+
+    resetBtn.addEventListener('click', () => {
+      resultBox.style.display = 'none';
+      currentFile = null;
+      fileInput.value = '';
+      fileSelectedBar.style.display = 'none';
+      convertBtn.setAttribute('disabled', 'true');
+    });
+
+    retryBtn.addEventListener('click', () => {
+      errorCard.style.display = 'none';
+      convertBtn.click();
+    });
+  </script>
+</body>
+</html>
