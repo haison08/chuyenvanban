@@ -103,18 +103,20 @@
         </div>
       </div>
 
-      <!-- Advanced Options Panel -->
-      <div class="options-accordion">
-        <button type="button" class="accordion-toggle" id="toggleOptionsBtn">
-          <span class="toggle-icon">⚙️</span>
-          <span>Tùy chỉnh thể thức & Khóa API</span>
+      <!-- Advanced Options Panel (Open by default) -->
+      <div class="options-container open" id="optionsContainer" style="margin-top: 1.5rem;">
+        <div class="options-header" id="toggleOptionsBtn">
+          <div class="options-title">
+            <span class="toggle-icon">⚙️</span>
+            <span>Tùy chỉnh thể thức & Khóa API</span>
+          </div>
           <svg class="chevron-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <polyline points="6 9 12 15 18 9"/>
           </svg>
-        </button>
+        </div>
 
-        <div class="accordion-content" id="optionsContent">
-          <div class="options-grid">
+        <div class="options-body" id="optionsContent">
+          <div class="options-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.25rem; margin-top: 0.5rem;">
             <div class="form-group">
               <label for="fontSelect" class="form-label">Phông chữ xuất bản:</label>
               <select id="fontSelect" class="form-select">
@@ -125,12 +127,19 @@
             </div>
 
             <div class="form-group">
-              <label for="apiKeyInput" class="form-label">
+              <label for="apiKeyInput" class="form-label" style="display: flex; justify-content: space-between; align-items: center;">
                 <span>Google Gemini API Key:</span>
-                <a href="https://aistudio.google.com/apikey" target="_blank" class="link-external">Lấy khóa API miễn phí ↗</a>
+                <a href="https://aistudio.google.com/apikey" target="_blank" class="link-external" style="color: #38bdf8; font-size: 0.85rem; text-decoration: none; font-weight: 500;">Lấy khóa API miễn phí ↗</a>
               </label>
-              <input type="password" id="apiKeyInput" class="form-input" placeholder="Dán khóa API (AIzaSy...) vào đây">
-              <span class="input-hint">Khóa API sẽ được lưu an toàn trực tiếp trên trình duyệt của bạn (LocalStorage).</span>
+              <div style="position: relative; display: flex; align-items: center;">
+                <input type="password" id="apiKeyInput" class="form-input" placeholder="Dán khóa API (AIzaSy...) vào đây" style="padding-right: 2.75rem; font-family: monospace;">
+                <button type="button" id="toggleApiKeyVisibility" style="position: absolute; right: 0.75rem; background: none; border: none; color: #94a3b8; cursor: pointer; font-size: 1.1rem; padding: 0.2rem;" title="Hiện / Ẩn khóa API">
+                  👁️
+                </button>
+              </div>
+              <span class="input-hint" style="font-size: 0.8rem; color: #94a3b8; margin-top: 0.35rem; display: block; line-height: 1.4;">
+                💡 Khóa API được lưu vĩnh viễn trên trình duyệt của bạn (LocalStorage). Chỉ cần dán 1 lần là dùng mãi mãi!
+              </span>
             </div>
           </div>
         </div>
@@ -253,9 +262,11 @@
     const fileTypeIcon = document.getElementById('fileTypeIcon');
     const removeFileBtn = document.getElementById('removeFileBtn');
     const convertBtn = document.getElementById('convertBtn');
+    const optionsContainer = document.getElementById('optionsContainer');
     const toggleOptionsBtn = document.getElementById('toggleOptionsBtn');
     const optionsContent = document.getElementById('optionsContent');
     const apiKeyInput = document.getElementById('apiKeyInput');
+    const toggleApiKeyVisibility = document.getElementById('toggleApiKeyVisibility');
     const fontSelect = document.getElementById('fontSelect');
 
     const processWrapper = document.getElementById('processWrapper');
@@ -279,14 +290,35 @@
     if (savedKey) {
       apiKeyInput.value = savedKey;
     }
-    apiKeyInput.addEventListener('input', () => {
-      localStorage.setItem('haison_gemini_key', apiKeyInput.value.trim());
-    });
+    const saveApiKeyToStorage = () => {
+      const val = apiKeyInput.value.trim();
+      if (val) {
+        localStorage.setItem('haison_gemini_key', val);
+      }
+    };
+    apiKeyInput.addEventListener('input', saveApiKeyToStorage);
+    apiKeyInput.addEventListener('change', saveApiKeyToStorage);
+    apiKeyInput.addEventListener('paste', () => setTimeout(saveApiKeyToStorage, 100));
+
+    // Show / Hide API Key toggle button
+    if (toggleApiKeyVisibility) {
+      toggleApiKeyVisibility.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (apiKeyInput.type === 'password') {
+          apiKeyInput.type = 'text';
+          toggleApiKeyVisibility.textContent = '🔒';
+          toggleApiKeyVisibility.title = 'Ẩn khóa API';
+        } else {
+          apiKeyInput.type = 'password';
+          toggleApiKeyVisibility.textContent = '👁️';
+          toggleApiKeyVisibility.title = 'Hiện khóa API';
+        }
+      });
+    }
 
     // Accordion toggle
     toggleOptionsBtn.addEventListener('click', () => {
-      toggleOptionsBtn.classList.toggle('active');
-      optionsContent.classList.toggle('open');
+      optionsContainer.classList.toggle('open');
     });
 
     // Drag and drop handlers
@@ -703,12 +735,12 @@ Trả về DUY NHẤT một khối mã JSON hợp lệ:
       const apiKey = apiKeyInput.value.trim();
       if (!apiKey) {
         errorCard.style.display = 'block';
-        errorMessage.textContent = 'Vui lòng nhập Google Gemini API Key để AI nhận diện văn bản. Bạn có thể lấy khóa miễn phí 100% tại aistudio.google.com/apikey!';
-        optionsContent.classList.add('open');
-        toggleOptionsBtn.classList.add('active');
+        errorMessage.textContent = 'Vui lòng nhập Google Gemini API Key để AI nhận diện văn bản. Bạn có thể bấm vào liên kết "Lấy khóa API miễn phí ↗" ngay phía trên để lấy khóa trong 30 giây!';
+        optionsContainer.classList.add('open');
         apiKeyInput.focus();
         return;
       }
+      localStorage.setItem('haison_gemini_key', apiKey);
 
       convertBtn.setAttribute('disabled', 'true');
       processWrapper.style.display = 'block';
