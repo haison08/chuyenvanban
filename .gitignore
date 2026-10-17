@@ -1,0 +1,27 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+ENV/
+
+# Data & Temp files
+uploads/*
+!uploads/.gitkeep
+outputs/*
+!outputs/.gitkeep
+temp_pages/
+*.docx
+*.pdf
+
+# Environment & Secret keys
+.env
+.env.local
+
+# OS files
+.DS_Store
+Thumbs.db

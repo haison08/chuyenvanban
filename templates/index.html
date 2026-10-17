@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Haison dep trai - Chuyển Đổi PDF & Ảnh Sang Word Chuẩn 100%</title>
+  <meta name="description" content="Chuyển đổi hình ảnh và PDF scan sang văn bản Word (.docx) chuẩn 100% thể thức văn bản, giữ nguyên bảng biểu và chỉnh sửa tự do.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+  <div class="ambient-glow glow-1"></div>
+  <div class="ambient-glow glow-2"></div>
+  
+  <header class="app-header">
+    <div class="header-container">
+      <div class="brand">
+        <div class="brand-icon">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/>
+            <polyline points="14 2 14 8 20 8"/>
+            <path d="M8 13h8"/>
+            <path d="M8 17h8"/>
+            <path d="M10 9h4"/>
+          </svg>
+        </div>
+        <div class="brand-text">
+          <span class="brand-title">Haison <span class="gradient-text">dep trai</span></span>
+          <span class="brand-subtitle">Smart OCR to Word Engine</span>
+        </div>
+      </div>
+      
+      <div class="header-badges">
+        <span class="badge badge-pulse">
+          <span class="pulse-dot"></span>
+          AI Vision Multimodal
+        </span>
+        <span class="badge badge-subtle">Chuẩn Nghị định 30</span>
+      </div>
+    </div>
+  </header>
+
+  <main class="main-content">
+    <section class="hero-section">
+      <h1 class="hero-title">
+        Chuyển Đổi Ảnh & PDF Sang Word <br>
+        <span class="gradient-text">Giống 100% & Sửa Văn Bản Tự Do</span>
+      </h1>
+      <p class="hero-desc">
+        Bóc tách cấu trúc tài liệu thông minh bằng AI: Giữ nguyên bảng biểu phức tạp đa tầng, 
+        căn lề hai bên, tiêu đề, quốc hiệu tiêu ngữ và tự động xoay khổ giấy ngang cho bảng rộng.
+      </p>
+    </section>
+
+    <div class="converter-card" id="converterCard">
+      <!-- Upload Zone -->
+      <div class="drop-zone" id="dropZone">
+        <input type="file" id="fileInput" accept=".pdf,.png,.jpg,.jpeg,.tiff,.webp" hidden>
+        
+        <div class="drop-content" id="dropContent">
+          <div class="upload-icon-wrapper">
+            <svg class="upload-icon" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+              <polyline points="17 8 12 3 7 8"/>
+              <line x1="12" y1="3" x2="12" y2="15"/>
+            </svg>
+          </div>
+          <h3 class="drop-title">Kéo thả file PDF hoặc Ảnh vào đây</h3>
+          <p class="drop-hint">Hỗ trợ PDF scan, ảnh chụp tài liệu (PNG, JPG, TIFF, WebP). Tối đa 50MB.</p>
+          
+          <div class="drop-actions">
+            <button type="button" class="btn btn-outline" id="browseBtn">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"/>
+                <line x1="12" y1="8" x2="12" y2="16"/>
+                <line x1="8" y1="12" x2="16" y2="12"/>
+              </svg>
+              Chọn file từ máy tính
+            </button>
+            <button type="button" class="btn btn-demo" id="demoBtn">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polygon points="5 3 19 12 5 21 5 3"/>
+              </svg>
+              Dùng thử tài liệu mẫu 6 trang
+            </button>
+          </div>
+        </div>
+
+        <!-- Selected File Preview Bar -->
+        <div class="file-preview-bar hidden" id="filePreviewBar">
+          <div class="file-icon-box">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+              <polyline points="14 2 14 8 20 8"/>
+            </svg>
+          </div>
+          <div class="file-info-details">
+            <span class="file-name" id="fileName">tailieu.pdf</span>
+            <span class="file-meta" id="fileMeta">2.5 MB • PDF Document</span>
+          </div>
+          <button type="button" class="btn-icon" id="removeFileBtn" title="Bỏ chọn file">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="18" y1="6" x2="6" y2="18"/>
+              <line x1="6" y1="6" x2="18" y2="18"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Advanced Options Accordion -->
+      <div class="options-container">
+        <div class="options-header" id="optionsToggle">
+          <div class="options-title">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="3"/>
+              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+            </svg>
+            <span>Tùy chọn nâng cao & Khóa AI</span>
+          </div>
+          <svg class="chevron-icon" id="chevronIcon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="6 9 12 15 18 9"/>
+          </svg>
+        </div>
+
+        <div class="options-body" id="optionsBody">
+          <div class="options-grid">
+            <div class="option-item">
+              <label class="toggle-switch">
+                <input type="checkbox" id="removeSignatures" checked>
+                <span class="slider"></span>
+              </label>
+              <div class="option-text">
+                <span class="option-label">Chừa khoảng trống ký tay & đóng dấu</span>
+                <span class="option-desc">Không chèn ảnh con dấu/chữ ký để bạn có thể in ra ký và đóng dấu mộc thật</span>
+              </div>
+            </div>
+
+            <div class="option-item">
+              <label class="toggle-switch">
+                <input type="checkbox" id="autoLandscape" checked>
+                <span class="slider"></span>
+              </label>
+              <div class="option-text">
+                <span class="option-label">Tự động xoay A4 Ngang cho bảng biểu</span>
+                <span class="option-desc">Trang nào có bảng biểu rộng sẽ tự xoay ngang để không bị vỡ cột</span>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="fontSelect" class="form-label">Phông chữ xuất bản:</label>
+              <select id="fontSelect" class="form-select">
+                <option value="Times New Roman" selected>Times New Roman (Chuẩn văn bản hành chính)</option>
+                <option value="Arial">Arial (Hiện đại, dễ nhìn)</option>
+                <option value="Calibri">Calibri (Trang nhã)</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="apiKeyInput" class="form-label">
+                <span>Google Gemini API Key:</span>
+                <a href="https://aistudio.google.com/apikey" target="_blank" class="link-external">Lấy khóa API miễn phí ↗</a>
+              </label>
+              <input type="password" id="apiKeyInput" class="form-input" placeholder="Nhập Gemini API Key hoặc để trống nếu đã cấu hình .env">
+              <span class="input-hint">Hệ thống ưu tiên đọc khóa từ file .env nội bộ nếu bạn không nhập tại đây.</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Action Button -->
+      <div class="convert-action-box">
+        <button type="button" class="btn btn-primary" id="convertBtn" disabled>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="20 6 9 17 4 12"/>
+          </svg>
+          Bắt Đầu Chuyển Đổi Sang Word
+        </button>
+      </div>
+
+      <!-- Error Card (Hidden by default) -->
+      <div class="error-card hidden" id="errorCard">
+        <div class="error-badge">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"/>
+            <line x1="12" y1="8" x2="12" y2="12"/>
+            <line x1="12" y1="16" x2="12.01" y2="16"/>
+          </svg>
+          <span id="errorTitle">Chưa thể hoàn tất</span>
+        </div>
+        <p class="error-desc" id="errorDesc">Đã có lỗi xảy ra.</p>
+        <button type="button" class="btn btn-retry" id="retryBtn">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="1 4 1 10 7 10"/>
+            <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/>
+          </svg>
+          Thử lại ngay
+        </button>
+      </div>
+
+      <!-- Progress Card (Hidden by default) -->
+      <div class="progress-card hidden" id="progressCard">
+        <div class="progress-header">
+          <div class="spinner"></div>
+          <span class="progress-status-text" id="progressStatusText">Đang xử lý tài liệu...</span>
+        </div>
+        <div class="progress-track">
+          <div class="progress-fill" id="progressFill"></div>
+        </div>
+        <ul class="progress-steps" id="progressSteps">
+          <li class="step-item active" id="step1">
+            <span class="step-icon">1</span>
+            <span class="step-title">Kết xuất trang PDF / Ảnh</span>
+          </li>
+          <li class="step-item" id="step2">
+            <span class="step-icon">2</span>
+            <span class="step-title">AI Vision phân tích bố cục & bảng</span>
+          </li>
+          <li class="step-item" id="step3">
+            <span class="step-icon">3</span>
+            <span class="step-title">Dựng cấu trúc Word (.docx)</span>
+          </li>
+          <li class="step-item" id="step4">
+            <span class="step-icon">4</span>
+            <span class="step-title">Khử trang trắng & Hoàn tất</span>
+          </li>
+        </ul>
+      </div>
+
+      <!-- Result Card (Hidden by default) -->
+      <div class="result-card hidden" id="resultCard">
+        <div class="result-badge">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+            <polyline points="22 4 12 14.01 9 11.01"/>
+          </svg>
+          <span>Chuyển đổi thành công 100%!</span>
+        </div>
+
+        <div class="result-details">
+          <div class="word-icon-large">
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
+              <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/>
+              <polyline points="14 2 14 8 20 8"/>
+              <line x1="16" y1="13" x2="8" y2="13"/>
+              <line x1="16" y1="17" x2="8" y2="17"/>
+              <line x1="10" y1="9" x2="8" y2="9"/>
+            </svg>
+          </div>
+          <div class="result-meta">
+            <h4 class="result-filename" id="resultFilename">Chuyen_Doi_Van_Ban.docx</h4>
+            <p class="result-subtitle" id="resultSubtitle">6 trang • Giữ nguyên định dạng & không trang trắng thừa</p>
+          </div>
+        </div>
+
+        <div class="result-actions">
+          <a href="#" class="btn btn-download" id="downloadBtn" download>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+              <polyline points="7 10 12 15 17 10"/>
+              <line x1="12" y1="15" x2="12" y2="3"/>
+            </svg>
+            Tải File Word (.docx) Về Máy
+          </a>
+          <button type="button" class="btn btn-outline" id="resetBtn">
+            Chuyển file khác
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Feature Highlights -->
+    <section class="features-grid">
+      <div class="feature-card">
+        <div class="feature-icon bg-cyan">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 20h9"/>
+            <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
+          </svg>
+        </div>
+        <h3 class="feature-title">Văn Bản Soạn Thảo 100%</h3>
+        <p class="feature-desc">Không phải dán ảnh chụp đè lên trang. Mọi từ ngữ đều có thể bôi đen, chỉnh sửa, đổi phông chữ và căn dòng linh hoạt.</p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon bg-indigo">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+            <line x1="3" y1="9" x2="21" y2="9"/>
+            <line x1="3" y1="15" x2="21" y2="15"/>
+            <line x1="9" y1="3" x2="9" y2="21"/>
+            <line x1="15" y1="3" x2="15" y2="21"/>
+          </svg>
+        </div>
+        <h3 class="feature-title">Bảng Biểu Đa Tầng Chuẩn Xác</h3>
+        <p class="feature-desc">Tự động tái tạo các bảng biểu phức tạp gồm nhiều tầng tiêu đề gộp ô (merged cells), chia độ rộng cột tỉ lệ vàng.</p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon bg-emerald">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
+            <line x1="8" y1="21" x2="16" y2="21"/>
+            <line x1="12" y1="17" x2="12" y2="21"/>
+          </svg>
+        </div>
+        <h3 class="feature-title">Xoay Khổ Ngang Thông Minh</h3>
+        <p class="feature-desc">Nhận diện bảng biểu phụ lục có nhiều cột để tự động tách Section xoay ngang (A4 Landscape) y hệt bản gốc.</p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon bg-violet">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"/>
+            <line x1="15" y1="9" x2="9" y2="15"/>
+            <line x1="9" y1="9" x2="15" y2="15"/>
+          </svg>
+        </div>
+        <h3 class="feature-title">Triệt Tiêu Trang Trắng Thừa</h3>
+        <p class="feature-desc">Cân đối khoảng cách dòng và lề theo Nghị định 30, triệt tiêu hoàn toàn lỗi tràn trang hoặc trang trắng trống rỗng.</p>
+      </div>
+    </section>
+  </main>
+
+  <footer class="app-footer">
+    <p>© 2026 Haison dep trai AI Engine. Thiết kế tối ưu cho thể thức văn bản hành chính & báo cáo Việt Nam.</p>
+  </footer>
+
+  <script src="/static/js/app.js"></script>
+</body>
+</html>
