@@ -20,9 +20,10 @@ DEFAULT_API_KEY = os.environ.get("GEMINI_API_KEY", "")
 GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={key}"
 
 CANDIDATE_MODELS = [
-    "gemini-1.5-flash",
+    "gemini-3.8-flash",
     "gemini-flash-latest",
     "gemini-2.5-flash",
+    "gemini-1.5-flash",
     "gemini-pro-latest"
 ]
 
