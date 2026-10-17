@@ -12,8 +12,8 @@ DEFAULT_API_KEY = os.environ.get("GEMINI_API_KEY", "")
 GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={key}"
 
 CANDIDATE_MODELS = [
+    "gemini-1.5-flash",
     "gemini-flash-latest",
-    "gemini-3.7-flash",
     "gemini-2.5-flash",
     "gemini-pro-latest"
 ]
@@ -34,7 +34,9 @@ def extract_pdf_pages_to_images(pdf_path, output_dir, dpi=180):
     return image_paths, len(doc)
 
 def parse_page_with_gemini(image_path, api_key=None):
-    key_to_use = api_key or DEFAULT_API_KEY
+    key_to_use = (api_key or DEFAULT_API_KEY or "").strip()
+    if not key_to_use:
+        raise Exception("Chưa có khóa Google Gemini API Key. Bạn hãy tạo khóa miễn phí tại https://aistudio.google.com/apikey và dán vào ô bên dưới nhé!")
     
     # Detect proper mime type
     ext = os.path.splitext(image_path)[1].lower()
@@ -105,18 +107,22 @@ Trả về DUY NHẤT một khối mã JSON hợp lệ:
                     if text_content.endswith("```"):
                         text_content = text_content[:-3]
                     return json.loads(text_content.strip())
+                elif resp.status_code == 401 or "API_KEY" in resp.text:
+                    raise Exception("Khóa API Gemini của bạn không hợp lệ hoặc đã bị vô hiệu hóa (Lỗi 401). Bạn hãy vào https://aistudio.google.com/apikey tạo một khóa API mới miễn phí (bắt đầu bằng AIzaSy...) và nhập vào ô API Key nhé!")
                 elif resp.status_code in (500, 503, 429):
-                    last_error = f"Model {model_name} bận (mã {resp.status_code})"
-                    time.sleep(1)
+                    last_error = f"Model {model_name} đang bận (mã {resp.status_code})"
+                    time.sleep(1.5)
                     continue
                 else:
                     last_error = f"Lỗi ({resp.status_code}): {resp.text}"
                     break
             except Exception as e:
+                if "401" in str(e) or "API_KEY" in str(e):
+                    raise e
                 last_error = str(e)
                 time.sleep(0.5)
 
-    raise Exception(f"Hệ thống AI đang quá tải tạm thời: {last_error}")
+    raise Exception(f"Không thể kết nối tới mô hình AI: {last_error}")
 
 def parse_page_local_fallback(page, page_num):
     rect = page.rect
