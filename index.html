@@ -451,33 +451,137 @@
       });
     }
 
+    // Post-process AI response to fix common issues
+    function postProcessAIResponse(data) {
+      if (!data || !data.elements) return data;
+      
+      data.elements.forEach(elem => {
+        // Fix signature_block: ensure each signatory/recipient item has proper line breaks
+        if (elem.type === 'signature_block') {
+          elem.recipients = fixMultilineItems(elem.recipients || []);
+          elem.signatory = fixMultilineItems(elem.signatory || []);
+        }
+        
+        // Fix table cells: ensure multiline text uses \n properly
+        if (elem.type === 'table' && elem.rows) {
+          elem.rows.forEach(row => {
+            if (row.cells) {
+              row.cells.forEach(cell => {
+                if (cell.text && typeof cell.text === 'string') {
+                  // Fix common Gemini concatenation issues
+                  cell.text = fixConcatenatedText(cell.text);
+                }
+              });
+            }
+          });
+        }
+        
+        // Fix borderless layout tables (signature approval blocks at bottom)
+        if (elem.type === 'table' && elem.has_border === false) {
+          if (elem.rows) {
+            elem.rows.forEach(row => {
+              if (row.cells) {
+                row.cells.forEach(cell => {
+                  if (cell.text && typeof cell.text === 'string') {
+                    cell.text = fixConcatenatedText(cell.text);
+                  }
+                });
+              }
+            });
+          }
+        }
+      });
+      
+      return data;
+    }
+    
+    // Fix items that should be separate lines but got concatenated
+    function fixMultilineItems(items) {
+      if (!Array.isArray(items)) return items;
+      const result = [];
+      items.forEach(item => {
+        if (item.is_space) {
+          result.push(item);
+          return;
+        }
+        if (item.text && typeof item.text === 'string') {
+          item.text = fixConcatenatedText(item.text);
+        }
+        result.push(item);
+      });
+      return result;
+    }
+    
+    // Fix text where Gemini concatenated separate lines into one string
+    function fixConcatenatedText(text) {
+      if (!text || typeof text !== 'string') return text;
+      
+      // Pattern: "Kính gửi:...Đề nghị" -> "Kính gửi:...\nĐề nghị"
+      text = text.replace(/(\.{3,})\s*(Đề\s+nghị)/g, '$1\n$2');
+      // Pattern: "đảng viên...T/M" -> "đảng viên...\nT/M"
+      text = text.replace(/(\.{3,})\s*(T\/M)/g, '$1\n$2');
+      // Pattern: "năm 2026T/M" or "năm 2026 T/M" on same content -> split
+      text = text.replace(/(năm\s+\d{4})\s*(T\/M)/g, '$1\n$2');
+      // Pattern: "kèm theo)...,ngày" -> "kèm theo)\n...,ngày"
+      text = text.replace(/(\))\s*(\.{2,},?\s*ngày)/g, '$1\n$2');
+      // Pattern: "họ và tên)..." -> split if followed by significant text
+      text = text.replace(/(họ\s+và\s+tên\))\s*([A-ZĐ])/g, '$1\n$2');
+      
+      return text;
+    }
+
     // Call Gemini API with Fallback
     async function analyzeWithGemini(pageImage, apiKey) {
       const prompt = `Bạn là một chuyên gia phân tích thị giác và bóc tách cấu trúc tài liệu văn bản chuyên nghiệp.
 Nhiệm vụ của bạn là đọc hình ảnh trang tài liệu này và chuyển đổi thành cấu trúc JSON chuẩn xác 100% để tạo file Word (.docx).
 
-YÊU CẦU ĐẶC BIỆT:
-1. Đọc đúng 100% chữ tiếng Việt có dấu, không bỏ sót chữ nào. Giữ nguyên các hàng chấm lửng (..............) dùng để điền thông tin nếu bản gốc có. Đảm bảo các vế trên cùng một dòng được giữ nguyên trên cùng một dòng (ví dụ: "Tôi là: ........................, sinh ngày ....................").
-2. Nhận diện thể thức văn bản:
-   - Nếu là phần đầu có Quốc hiệu/Tiêu ngữ và Đơn vị ban hành: phân tách thành "type": "header_table" với 2 cột left và right.
-   - Nếu là Tiêu đề: "type": "heading", level 1, bold true, align center.
-   - Nếu là Đoạn văn: "type": "paragraph", align "justify", first_indent 28, chứa các "runs" với bold, italic tương ứng.
-   - Nếu là Bảng biểu: "type": "table", liệt kê các hàng "rows" với từng ô "cells" (kèm row, col, rowspan, colspan, text, align, bold). Đảm bảo giữ nguyên các từ không bị ngắt quãng vô lý (ví dụ: "không", "Lê Văn Hòa", ngày tháng "30/9/1960").
-   - Nếu là Nơi nhận và Chữ ký: "type": "signature_block", gồm "recipients" và "signatory". Chừa khoảng trống cho chữ ký bằng {"is_space": true, "space": 35}.
-   - Nếu chỉ có Chữ ký người khai ở bên phải: đặt vào "signature_block" với "recipients": [] và "signatory" chứa ngày tháng, người khai, họ tên căn giữa ("align": "center").
-3. Xác định hướng trang:
-   - QUAN TRỌNG: Nếu trang có bảng biểu nhiều cột (từ 6 cột trở lên, ví dụ danh sách Đảng viên, bảng thống kê) hoặc tài liệu dàn theo bề ngang: BẮT BUỘC đặt "orientation": "landscape".
-   - Chỉ đặt "orientation": "portrait" khi là tài liệu văn bản đọc xuôi ít cột thông thường.
-4. QUY TẮC SỐNG CÒN VỀ ĐƯỜNG KẺ VÀ BỐ CỤC (RẤT QUAN TRỌNG):
-   - TUYỆT ĐỐI KHÔNG TỰ TIỆN THÊM KHUNG VIỀN NẾU BẢN GỐC KHÔNG CÓ!
-   - Ô "Mẫu 6-HHD" ở góc trên bên phải: chỉ đóng khung nhỏ bao quanh chữ này, không vẽ viền bảng sang bên trái.
-   - PHẦN 2 CỘT XÉT DUYỆT Ở DƯỚI CÙNG ("XÉT, ĐỀ NGHỊ CỦA ĐẢNG UỶ" và "XÉT, ĐỀ NGHỊ CỦA CHI BỘ"):
-     + Đặt "has_border": false (hoặc dùng type "table" không viền).
-     + TỪNG Ý BẮT BUỘC PHẢI NGẮT DÒNG (\n) RÕ RÀNG, TUYỆT ĐỐI KHÔNG ĐƯỢC NỐI CHỮ TRÊN CÙNG DÒNG:
-       * Cột trái: Tiêu đề -> Kính gửi:... -> Đề nghị tặng... -> cho đảng viên:... -> (có danh sách...) -> ngày... tháng 10 năm 2026 -> T/M...
-       * Cột phải: Tiêu đề -> Kính gửi:... -> Đề nghị tặng... -> cho đảng viên:... -> ngày... tháng 10 năm 2026 -> T/M CHI BỘ -> (Ký, ghi rõ họ và tên).
-     + TUYỆT ĐỐI KHÔNG để chữ "Đề" dính vào dòng "Kính gửi:", không để chữ "T/M" dính vào dòng ngày tháng!
-   - CHỈ đặt "has_border": true khi đó thực sự là MỘT BẢNG KẺ Ô LƯỚI RÕ RÀNG TRONG ẢNH GỐC (như bảng danh sách đảng viên, bảng thống kê).
+## QUY TẮC BẮT BUỘC:
+
+### 1. ĐỌC CHỮ TIẾNG VIỆT:
+- Đọc đúng 100% chữ tiếng Việt có dấu, không bỏ sót chữ nào.
+- Giữ nguyên các hàng chấm lửng (..............) dùng để điền thông tin.
+- Đảm bảo các vế trên cùng một dòng được giữ nguyên trên cùng một dòng (ví dụ: "Tôi là: ........................, sinh ngày ....................").
+- KHÔNG tự ý ghép 2 dòng khác nhau thành 1 dòng.
+
+### 2. NHẬN DIỆN CẤU TRÚC:
+- **Quốc hiệu + Đơn vị ban hành** (2 cột ở đầu): "type": "header_table" với "left" và "right" arrays.
+- **Tiêu đề**: "type": "heading", level 1, bold true, align "center".
+- **Đoạn văn**: "type": "paragraph", align "justify", first_indent 28, chứa "runs" array với bold/italic.
+- **Bảng kẻ ô lưới**: "type": "table", has_border: true, liệt kê "rows" với "cells" (text, align, bold, rowspan, colspan).
+- **Bảng bố cục KHÔNG kẻ viền** (ví dụ phần xét duyệt 2 cột): "type": "table", has_border: false.
+- **Khối chữ ký (Nơi nhận + Ký tên)**: "type": "signature_block", gồm "recipients" (array) và "signatory" (array). Chừa khoảng trống chữ ký: {"is_space": true, "space": 35}.
+- **Chỉ có chữ ký người khai** (không có Nơi nhận): "signature_block" với "recipients": [] và "signatory" chứa ngày tháng, chức danh, (Ký, ghi rõ...).
+
+### 3. HƯỚNG TRANG:
+- Bảng >= 6 cột HOẶC tài liệu ngang: "orientation": "landscape".
+- Văn bản đọc xuôi ít cột: "orientation": "portrait".
+
+### 4. QUY TẮC VIỀN VÀ BỐ CỤC (SỐNG CÒN):
+- **TUYỆT ĐỐI KHÔNG thêm khung viền** nếu bản gốc không có!
+- Ô "Mẫu 6-HHD" góc phải: chỉ đóng khung nhỏ bao quanh chữ, KHÔNG vẽ viền bảng sang bên trái.
+- CHỈ has_border: true khi đó là BẢNG KẺ Ô LƯỚI rõ ràng trong ảnh gốc.
+
+### 5. PHẦN XÉT DUYỆT / CHỮ KÝ 2 CỘT (CỰC KỲ QUAN TRỌNG):
+Nếu cuối trang có 2 cột xét duyệt (ví dụ: "XÉT, ĐỀ NGHỊ CỦA ĐẢNG UỶ" bên trái và "XÉT, ĐỀ NGHỊ CỦA CHI BỘ" bên phải):
+- Dùng "type": "table" với has_border: false, 2 cột.
+- **MỖI Ý PHẢI LÀ MỘT DÒNG RIÊNG BIỆT**, dùng ký tự \\n để ngắt dòng trong text.
+  Ví dụ cho 1 ô:
+  "text": "XÉT, ĐỀ NGHỊ CỦA ĐẢNG UỶ\\nKính gửi: ............................................\\nĐề nghị tặng Huy hiệu ............ năm tuổi Đảng\\ncho đảng viên .....................................\\n(có danh sách đề nghị tặng Huy hiệu Đảng kèm theo)\\n.................., ngày ....... tháng 10 năm 2026\\nT/M\\n(Ký, ghi rõ họ và tên)"
+- **TUYỆT ĐỐI CẤM**: Ghép "Kính gửi:...Đề nghị" thành 1 dòng, hoặc ghép "ngày...T/M" thành 1 dòng!
+
+### 6. KHỐI NGƯỜI KHAI (1 cột bên phải):
+Nếu có phần "NGƯỜI KHAI" hoặc "Ký, ghi rõ họ tên" BÊN PHẢI:
+- Dùng "type": "signature_block" với recipients: [] và signatory chứa các items riêng biệt:
+  {"text": ".................., ngày ....... tháng ....... năm 2026", "align": "center"}
+  {"text": "NGƯỜI KHAI", "bold": true, "align": "center"}
+  {"text": "(Ký, ghi rõ họ tên)", "italic": true, "align": "center"}
+  {"is_space": true, "space": 40}
+
+### 7. BẢNG BIỂU PHỨC TẠP (NHIỀU CỘT):
+- Đếm chính xác số cột trong bảng gốc. Nếu bảng gốc có 16 cột thì JSON phải có đúng 16 cells mỗi row.
+- Mỗi cell phải có: text, align, bold (nếu in đậm).
+- Nếu có ô merge (gộp ô): dùng "rowspan" và "colspan".
+- KHÔNG được bỏ sót cột nào!
 
 Trả về DUY NHẤT một khối mã JSON hợp lệ:
 {
@@ -485,7 +589,7 @@ Trả về DUY NHẤT một khối mã JSON hợp lệ:
   "elements": []
 }`;
 
-      const candidateModels = ["gemini-3.8-flash", "gemini-flash-latest", "gemini-3.5-flash", "gemini-flash-lite-latest", "gemini-2.5-flash"];
+      const candidateModels = ["gemini-2.5-flash", "gemini-3.8-flash", "gemini-flash-latest", "gemini-3.5-flash", "gemini-flash-lite-latest"];
       let lastError = null;
 
       for (const model of candidateModels) {
@@ -498,7 +602,7 @@ Trả về DUY NHẤT một khối mã JSON hợp lệ:
             ]
           }],
           generationConfig: {
-            temperature: 0.1,
+            temperature: 0.05,
             responseMimeType: "application/json"
           }
         };
@@ -522,7 +626,9 @@ Trả về DUY NHẤT một khối mã JSON hợp lệ:
             if (!jsonMatch) {
               throw new Error("Không thể trích xuất cấu trúc dữ liệu từ kết quả AI.");
             }
-            return JSON.parse(jsonMatch[0]);
+            const parsed = JSON.parse(jsonMatch[0]);
+            // Post-process to fix common Gemini issues
+            return postProcessAIResponse(parsed);
           } else if (resp.status === 401) {
             throw new Error("Khóa API Gemini không hợp lệ hoặc đã bị khóa (mã 401). Bạn hãy vào https://aistudio.google.com/apikey tạo khóa API mới miễn phí và dán lại nhé!");
           } else {
@@ -539,7 +645,7 @@ Trả về DUY NHẤT một khối mã JSON hợp lệ:
 
     // Build Word Document using docx.js
     async function buildWordDocument(pagesData, defaultFont) {
-      const { Document, Paragraph, TextRun, Table, TableRow, TableCell, WidthType, AlignmentType, BorderStyle, PageOrientation } = docx;
+      const { Document, Paragraph, TextRun, Table, TableRow, TableCell, WidthType, AlignmentType, BorderStyle, PageOrientation, VerticalAlign } = docx;
 
       const noBorder = { style: BorderStyle.NONE, size: 0, color: "auto" };
       const singleBorder = { style: BorderStyle.SINGLE, size: 4, color: "000000" };
@@ -552,20 +658,26 @@ Trả về DUY NHẤT một khối mã JSON hợp lệ:
         return AlignmentType.LEFT;
       }
 
-      function createParagraph(item) {
+      // Create a single paragraph (no newline splitting - used for simple items)
+      function createSingleParagraph(item) {
         if (typeof item === 'string') item = { text: item };
         const runs = item.runs || [];
         const textRuns = [];
 
         if (runs.length > 0) {
           runs.forEach(r => {
-            textRuns.push(new TextRun({
-              text: r.text || '',
-              bold: !!r.bold,
-              italics: !!r.italic,
-              size: (r.size || 13) * 2, // 1pt = 2 half-points
-              font: defaultFont
-            }));
+            const rText = String(r.text || '');
+            const rLines = rText.split('\n');
+            rLines.forEach((line, lIdx) => {
+              textRuns.push(new TextRun({
+                text: line,
+                bold: !!r.bold,
+                italics: !!r.italic,
+                size: (r.size || 13) * 2,
+                font: defaultFont,
+                break: lIdx > 0 ? 1 : 0
+              }));
+            });
           });
         } else if (item.text) {
           const rawText = String(item.text);
@@ -595,6 +707,34 @@ Trả về DUY NHẤT một khối mã JSON hợp lệ:
         });
       }
 
+      // Create multiple paragraphs from an item that may contain \n in its text
+      // Each line becomes its own Paragraph for better layout control
+      function createMultiParagraphs(item, overrides) {
+        if (typeof item === 'string') item = { text: item };
+        const merged = { ...item, ...(overrides || {}) };
+        const rawText = String(merged.text || '');
+        const lines = rawText.split('\n').filter(l => l.trim() !== '' || rawText.includes('\n'));
+        
+        if (lines.length <= 1) {
+          return [createSingleParagraph(merged)];
+        }
+        
+        return lines.map((line, lIdx) => {
+          return createSingleParagraph({
+            ...merged,
+            text: line,
+            space_before: lIdx === 0 ? (merged.space_before || 0) : 1,
+            space_after: lIdx === lines.length - 1 ? (merged.space_after || 2) : 1,
+            line_spacing: merged.line_spacing || 1.1
+          });
+        });
+      }
+
+      // Legacy wrapper for backward compat
+      function createParagraph(item) {
+        return createSingleParagraph(item);
+      }
+
       const sections = [];
 
       pagesData.forEach(page => {
@@ -621,15 +761,17 @@ Trả về DUY NHẤT một khối mã JSON hợp lệ:
           if (elType === 'header_table') {
             const leftItems = elem.left || [];
             const rightItems = elem.right || [];
+            const leftParas = leftItems.flatMap(i => createMultiParagraphs(i));
+            const rightParas = rightItems.flatMap(i => createMultiParagraphs(i));
             const cellL = new TableCell({
               width: { size: isLandscape ? 7000 : 4400, type: WidthType.DXA },
               borders: { top: noBorder, bottom: noBorder, left: noBorder, right: noBorder },
-              children: leftItems.map(createParagraph)
+              children: leftParas.length ? leftParas : [new Paragraph({ text: '' })]
             });
             const cellR = new TableCell({
               width: { size: isLandscape ? 8500 : 5400, type: WidthType.DXA },
               borders: { top: noBorder, bottom: noBorder, left: noBorder, right: noBorder },
-              children: rightItems.map(createParagraph)
+              children: rightParas.length ? rightParas : [new Paragraph({ text: '' })]
             });
             children.push(new Table({
               rows: [new TableRow({ children: [cellL, cellR] })],
@@ -640,14 +782,23 @@ Trả về DUY NHẤT một khối mã JSON hợp lệ:
             const recipItems = elem.recipients || [];
             const sigItems = elem.signatory || [];
 
-            const leftParas = recipItems.map(createParagraph);
-            const rightParas = [];
+            // Build left side (Nơi nhận) - split multiline items into separate paragraphs
+            const leftParas = [];
+            recipItems.forEach(item => {
+              if (item.is_space) {
+                leftParas.push(new Paragraph({ text: '', spacing: { before: Math.round((item.space || 35) * 20) } }));
+              } else {
+                createMultiParagraphs(item).forEach(p => leftParas.push(p));
+              }
+            });
 
+            // Build right side (Chữ ký) - split multiline items into separate paragraphs
+            const rightParas = [];
             sigItems.forEach(item => {
               if (item.is_space) {
                 rightParas.push(new Paragraph({ text: '', spacing: { before: Math.round((item.space || 35) * 20) } }));
               } else {
-                rightParas.push(createParagraph(item));
+                createMultiParagraphs(item).forEach(p => rightParas.push(p));
               }
             });
 
@@ -668,12 +819,19 @@ Trả về DUY NHẤT một khối mã JSON hợp lệ:
           } else if (elType === 'table') {
             const rowsData = elem.rows || [];
             let colWidths = elem.col_widths || [];
-            const numCols = colWidths.length || (rowsData[0] && rowsData[0].cells && rowsData[0].cells.length) || 1;
+            // Detect actual max column count from all rows
+            let maxCols = colWidths.length || 0;
+            rowsData.forEach(row => {
+              const rowColCount = (row.cells || []).length;
+              if (rowColCount > maxCols) maxCols = rowColCount;
+            });
+            const numCols = maxCols || 1;
             const numRows = rowsData.length;
 
-            // Strict Border Logic: 1-row or <= 2-cols layout tables MUST NOT have borders!
+            // Border Logic: respect has_border from AI, otherwise infer
             let hasBorder = elem.has_border;
             if (hasBorder === undefined) {
+              // Layout tables (1-row or 2-col without content suggesting a real table) should NOT have borders
               hasBorder = !(numRows <= 1 || numCols <= 2);
             }
 
@@ -691,19 +849,18 @@ Trả về DUY NHẤT một khối mã JSON hợp lệ:
                (rowsData[0].cells[0] && String(rowsData[0].cells[0].text || '').includes('Mẫu'))));
 
             if (isTemplateHeaderTable) {
-              // Left cell takes 75% width, right cell takes 25% width
               colWidths = [Math.round(availableWidthDxa * 0.75), Math.round(availableWidthDxa * 0.25)];
-            } else if (numCols === 12) {
-              // Standard 12-column member list
-              colWidths = [480, 1920, 1020, 1330, 2150, 740, 740, 790, 1330, 1330, 1250, 1470];
             } else if (!colWidths || colWidths.length !== numCols) {
+              // Auto-distribute widths evenly
               const equalWidth = Math.round(availableWidthDxa / numCols);
               colWidths = new Array(numCols).fill(equalWidth);
             } else {
+              // Convert mm to DXA (1mm ≈ 56.7 DXA)
               colWidths = colWidths.map(w => Math.round(w * 56.7));
             }
 
-            const cellFontSize = numCols >= 11 ? 9.0 : (numCols >= 8 ? 9.5 : (numCols >= 6 ? 10.5 : 12.0));
+            // Dynamic font size based on column count
+            const cellFontSize = numCols >= 14 ? 8.0 : (numCols >= 11 ? 8.5 : (numCols >= 8 ? 9.5 : (numCols >= 6 ? 10.5 : 12.0)));
 
             const tableRows = rowsData.map((rowObj, rIdx) => {
               const cells = rowObj.cells || [];
@@ -722,26 +879,27 @@ Trả về DUY NHẤT một khối mã JSON hợp lệ:
 
                 let cellChildren = [];
                 if (cellInfo.runs && Array.isArray(cellInfo.runs) && cellInfo.runs.length > 0) {
-                  cellChildren.push(createParagraph(cellInfo));
+                  cellChildren.push(createSingleParagraph(cellInfo));
                 } else {
                   const rawLines = String(text).split('\n');
                   if (rawLines.length > 1) {
-                    cellChildren = rawLines.map((line, lIdx) => createParagraph({
+                    // Each line becomes its own paragraph for proper line breaks
+                    cellChildren = rawLines.map((line, lIdx) => createSingleParagraph({
                       text: line.trim(),
                       bold: !!cellInfo.bold,
                       italic: !!cellInfo.italic,
-                      align: cellInfo.align || 'left',
+                      align: cellInfo.align || (hasBorder ? 'center' : 'left'),
                       size: cellInfo.size || cellFontSize,
                       space_before: (lIdx === 0 ? 0 : 1),
                       space_after: (lIdx === rawLines.length - 1 ? 2 : 1),
-                      line_spacing: 1.1
+                      line_spacing: 1.08
                     }));
                   } else {
-                    cellChildren.push(createParagraph({
+                    cellChildren.push(createSingleParagraph({
                       text: text,
                       bold: !!cellInfo.bold,
                       italic: !!cellInfo.italic,
-                      align: cellInfo.align || 'left',
+                      align: cellInfo.align || (hasBorder ? 'center' : 'left'),
                       size: cellInfo.size || cellFontSize,
                       space_before: 0,
                       space_after: 2,
@@ -750,12 +908,18 @@ Trả về DUY NHẤT một khối mã JSON hợp lệ:
                   }
                 }
 
+                // Ensure cell has at least one child
+                if (cellChildren.length === 0) {
+                  cellChildren.push(new Paragraph({ text: '' }));
+                }
+
                 rowCells.push(new TableCell({
                   width: { size: colWidths[cPos] || 1000, type: WidthType.DXA },
                   borders: cellBorder,
                   columnSpan: (cellInfo.colspan && cellInfo.colspan > 1) ? cellInfo.colspan : undefined,
                   rowSpan: (cellInfo.rowspan && cellInfo.rowspan > 1) ? cellInfo.rowspan : undefined,
-                  margins: { top: 60, bottom: 60, left: 80, right: 80 },
+                  verticalAlign: VerticalAlign.CENTER,
+                  margins: { top: 40, bottom: 40, left: 60, right: 60 },
                   children: cellChildren
                 }));
               }
@@ -768,8 +932,13 @@ Trả về DUY NHẤT một khối mã JSON hợp lệ:
             }));
             children.push(new Paragraph({ text: '', spacing: { after: 120 } }));
           } else {
-            // Paragraph or Heading
-            children.push(createParagraph(elem));
+            // Paragraph or Heading - also handle multiline
+            const rawText = String(elem.text || '');
+            if (rawText.includes('\n') && rawText.split('\n').length > 1) {
+              createMultiParagraphs(elem).forEach(p => children.push(p));
+            } else {
+              children.push(createParagraph(elem));
+            }
           }
         });
 
