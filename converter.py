@@ -71,13 +71,15 @@ YÊU CẦU ĐẶC BIỆT:
 3. Xác định hướng trang:
    - QUAN TRỌNG: Nếu trang có bảng biểu nhiều cột (từ 6 cột trở lên, ví dụ danh sách Đảng viên, bảng thống kê) hoặc tài liệu dàn theo bề ngang: BẮT BUỘC đặt "orientation": "landscape".
    - Chỉ đặt "orientation": "portrait" khi là tài liệu văn bản đọc xuôi ít cột thông thường.
-4. QUY TẮC SỐNG CÒN VỀ ĐƯỜNG KẺ VÀ KHUNG VIỀN (BORDERS):
+4. QUY TẮC SỐNG CÒN VỀ ĐƯỜNG KẺ VÀ BỐ CỤC (RẤT QUAN TRỌNG):
    - TUYỆT ĐỐI KHÔNG TỰ TIỆN THÊM KHUNG VIỀN NẾU BẢN GỐC KHÔNG CÓ!
-   - Các phần chia 2 cột như:
-     + Chữ ký, người khai (ví dụ: "NGƯỜI KHAI")
-     + 2 cột chữ ký xét duyệt (ví dụ: "XÉT, ĐỀ NGHỊ CỦA ĐẢNG UỶ" và "XÉT, ĐỀ NGHỊ CỦA CHI BỘ")
-     + Phần số hiệu/mã mẫu ở góc phải (ví dụ: "Mẫu 6-HHD")
-     BẮT BUỘC đặt "has_border": false (hoặc dùng "signature_block", "paragraph") để KHÔNG BỊ VẼ KHUNG ĐEN.
+   - Ô "Mẫu 6-HHD" ở góc trên bên phải: chỉ đóng khung nhỏ bao quanh chữ này, không vẽ viền bảng sang bên trái.
+   - PHẦN 2 CỘT XÉT DUYỆT Ở DƯỚI CÙNG ("XÉT, ĐỀ NGHỊ CỦA ĐẢNG UỶ" và "XÉT, ĐỀ NGHỊ CỦA CHI BỘ"):
+     + Đặt "has_border": false (hoặc dùng type "table" không viền).
+     + TỪNG Ý BẮT BUỘC PHẢI NGẮT DÒNG (\n) RÕ RÀNG, TUYỆT ĐỐI KHÔNG ĐƯỢC NỐI CHỮ TRÊN CÙNG DÒNG:
+       * Cột trái: Tiêu đề -> Kính gửi:... -> Đề nghị tặng... -> cho đảng viên:... -> (có danh sách...) -> ngày... tháng 10 năm 2026 -> T/M...
+       * Cột phải: Tiêu đề -> Kính gửi:... -> Đề nghị tặng... -> cho đảng viên:... -> ngày... tháng 10 năm 2026 -> T/M CHI BỘ -> (Ký, ghi rõ họ và tên).
+     + TUYỆT ĐỐI KHÔNG để chữ "Đề" dính vào dòng "Kính gửi:", không để chữ "T/M" dính vào dòng ngày tháng!
    - CHỈ đặt "has_border": true khi đó thực sự là MỘT BẢNG KẺ Ô LƯỚI RÕ RÀNG TRONG ẢNH GỐC (như bảng danh sách đảng viên, bảng biểu thống kê).
 
 Trả về DUY NHẤT một khối mã JSON hợp lệ:

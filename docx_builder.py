@@ -267,6 +267,11 @@ def build_docx_from_structure(doc_data, output_path, options=None):
                     if num_cols == 12:
                         # Standard 12-column Vietnamese member/cadre list
                         col_widths = [8.5, 34.0, 18.0, 23.5, 38.0, 13.0, 13.0, 14.0, 23.5, 23.5, 22.0, 26.0]
+                    is_template_box = (num_rows == 1 and num_cols == 2 and any(
+                        'mẫu' in str(c.get('text', '')).lower() for r in rows_data for c in r.get('cells', [])
+                    ))
+                    if is_template_box:
+                        col_widths = [round(available_width_mm * 0.78, 1), round(available_width_mm * 0.22, 1)]
                     else:
                         col_weights = [1.0] * num_cols
                         for r in rows_data:
@@ -353,7 +358,17 @@ def build_docx_from_structure(doc_data, output_path, options=None):
                             
                         text = cell_format.get('text', '')
                         if text:
-                            add_styled_paragraph(target_cell, cell_format, default_font=default_font)
+                            lines = [l.strip() for l in str(text).split('\n') if l.strip()]
+                            if len(lines) > 1:
+                                for l_idx, line in enumerate(lines):
+                                    line_fmt = dict(cell_format)
+                                    line_fmt['text'] = line
+                                    line_fmt['space_before'] = 0 if l_idx == 0 else 1
+                                    line_fmt['space_after'] = 2 if l_idx == len(lines) - 1 else 1
+                                    line_fmt['line_spacing'] = 1.1
+                                    add_styled_paragraph(target_cell, line_fmt, default_font=default_font)
+                            else:
+                                add_styled_paragraph(target_cell, cell_format, default_font=default_font)
                             
                         # If table has no borders but this individual cell represents a boxed template label (e.g. Mẫu 6-HHD)
                         if not has_border and (cell_format.get('border') or ('Mẫu' in text and num_rows == 1 and num_cols == 2 and c_start == 1)):
