@@ -8,6 +8,14 @@ from PIL import Image
 from docx_builder import build_docx_from_structure
 from sample_data import get_sample_document_structure
 
+env_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '.env')
+if os.path.exists(env_path):
+    with open(env_path) as f:
+        for line in f:
+            if line.strip() and not line.startswith('#') and '=' in line:
+                k, v = line.strip().split('=', 1)
+                os.environ.setdefault(k.strip(), v.strip())
+
 DEFAULT_API_KEY = os.environ.get("GEMINI_API_KEY", "")
 GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={key}"
 
@@ -62,6 +70,14 @@ YÊU CẦU ĐẶC BIỆT:
 3. Xác định hướng trang:
    - QUAN TRỌNG: Nếu trang có bảng biểu nhiều cột (từ 6 cột trở lên, ví dụ danh sách Đảng viên, bảng thống kê) hoặc tài liệu dàn theo bề ngang: BẮT BUỘC đặt "orientation": "landscape".
    - Chỉ đặt "orientation": "portrait" khi là tài liệu văn bản đọc xuôi ít cột thông thường.
+4. QUY TẮC SỐNG CÒN VỀ ĐƯỜNG KẺ VÀ KHUNG VIỀN (BORDERS):
+   - TUYỆT ĐỐI KHÔNG TỰ TIỆN THÊM KHUNG VIỀN NẾU BẢN GỐC KHÔNG CÓ!
+   - Các phần chia 2 cột như:
+     + Chữ ký, người khai (ví dụ: "NGƯỜI KHAI")
+     + 2 cột chữ ký xét duyệt (ví dụ: "XÉT, ĐỀ NGHỊ CỦA ĐẢNG UỶ" và "XÉT, ĐỀ NGHỊ CỦA CHI BỘ")
+     + Phần số hiệu/mã mẫu ở góc phải (ví dụ: "Mẫu 6-HHD")
+     BẮT BUỘC đặt "has_border": false (hoặc dùng "signature_block", "paragraph") để KHÔNG BỊ VẼ KHUNG ĐEN.
+   - CHỈ đặt "has_border": true khi đó thực sự là MỘT BẢNG KẺ Ô LƯỚI RÕ RÀNG TRONG ẢNH GỐC (như bảng danh sách đảng viên, bảng biểu thống kê).
 
 Trả về DUY NHẤT một khối mã JSON hợp lệ:
 {

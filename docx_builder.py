@@ -36,16 +36,28 @@ def set_cell_borders(cell, top=None, bottom=None, left=None, right=None):
 
 def set_table_borders(table, val='single', sz='4', color='000000'):
     tblPr = table._tbl.tblPr
-    tblBorders = parse_xml(
-        f'<w:tblBorders {nsdecls("w")}>\n'
-        f'  <w:top w:val="{val}" w:sz="{sz}" w:space="0" w:color="{color}"/>\n'
-        f'  <w:left w:val="{val}" w:sz="{sz}" w:space="0" w:color="{color}"/>\n'
-        f'  <w:bottom w:val="{val}" w:sz="{sz}" w:space="0" w:color="{color}"/>\n'
-        f'  <w:right w:val="{val}" w:sz="{sz}" w:space="0" w:color="{color}"/>\n'
-        f'  <w:insideH w:val="{val}" w:sz="{sz}" w:space="0" w:color="{color}"/>\n'
-        f'  <w:insideV w:val="{val}" w:sz="{sz}" w:space="0" w:color="{color}"/>\n'
-        f'</w:tblBorders>'
-    )
+    if val == 'none':
+        tblBorders = parse_xml(
+            f'<w:tblBorders {nsdecls("w")}>\n'
+            f'  <w:top w:val="none"/>\n'
+            f'  <w:left w:val="none"/>\n'
+            f'  <w:bottom w:val="none"/>\n'
+            f'  <w:right w:val="none"/>\n'
+            f'  <w:insideH w:val="none"/>\n'
+            f'  <w:insideV w:val="none"/>\n'
+            f'</w:tblBorders>'
+        )
+    else:
+        tblBorders = parse_xml(
+            f'<w:tblBorders {nsdecls("w")}>\n'
+            f'  <w:top w:val="{val}" w:sz="{sz}" w:space="0" w:color="{color}"/>\n'
+            f'  <w:left w:val="{val}" w:sz="{sz}" w:space="0" w:color="{color}"/>\n'
+            f'  <w:bottom w:val="{val}" w:sz="{sz}" w:space="0" w:color="{color}"/>\n'
+            f'  <w:right w:val="{val}" w:sz="{sz}" w:space="0" w:color="{color}"/>\n'
+            f'  <w:insideH w:val="{val}" w:sz="{sz}" w:space="0" w:color="{color}"/>\n'
+            f'  <w:insideV w:val="{val}" w:sz="{sz}" w:space="0" w:color="{color}"/>\n'
+            f'</w:tblBorders>'
+        )
     tblPr.append(tblBorders)
 
 def parse_align(align_str):
@@ -276,7 +288,20 @@ def build_docx_from_structure(doc_data, output_path, options=None):
                 table = doc.add_table(rows=num_rows, cols=num_cols)
                 table.alignment = WD_TABLE_ALIGNMENT.CENTER
                 table.autofit = False
-                set_table_borders(table, val='single', sz='4', color='000000')
+                
+                # Determine if table should have visible borders
+                has_border = elem.get('has_border', None)
+                if has_border is None:
+                    # Layout tables (1 row, or 2-column signature/approval blocks) MUST NOT have borders
+                    if num_rows <= 1 or num_cols <= 2:
+                        has_border = False
+                    else:
+                        has_border = True
+                        
+                if has_border:
+                    set_table_borders(table, val='single', sz='4', color='000000')
+                else:
+                    set_table_borders(table, val='none', sz='0', color='auto')
                 
                 # Apply column widths and cell padding
                 for r_idx, r_elem in enumerate(table.rows):
@@ -284,7 +309,10 @@ def build_docx_from_structure(doc_data, output_path, options=None):
                         if c_idx < len(r_elem.cells):
                             r_elem.cells[c_idx].width = Mm(w_mm)
                             r_elem.cells[c_idx].vertical_alignment = WD_ALIGN_VERTICAL.CENTER
-                            set_cell_margins(r_elem.cells[c_idx], top=15, bottom=15, left=20, right=20)
+                            if has_border:
+                                set_cell_margins(r_elem.cells[c_idx], top=15, bottom=15, left=20, right=20)
+                            else:
+                                set_cell_margins(r_elem.cells[c_idx], top=0, bottom=0, left=0, right=0)
                             
                 # Fill cells and handle merges
                 for r_idx, row_obj in enumerate(rows_data):
@@ -326,6 +354,15 @@ def build_docx_from_structure(doc_data, output_path, options=None):
                         text = cell_format.get('text', '')
                         if text:
                             add_styled_paragraph(target_cell, cell_format, default_font=default_font)
+                            
+                        # If table has no borders but this individual cell represents a boxed template label (e.g. Mẫu 6-HHD)
+                        if not has_border and (cell_format.get('border') or ('Mẫu' in text and num_rows == 1 and num_cols == 2 and c_start == 1)):
+                            set_cell_borders(target_cell,
+                                             top={'val': 'single', 'sz': '4', 'color': '000000'},
+                                             bottom={'val': 'single', 'sz': '4', 'color': '000000'},
+                                             left={'val': 'single', 'sz': '4', 'color': '000000'},
+                                             right={'val': 'single', 'sz': '4', 'color': '000000'})
+                            set_cell_margins(target_cell, top=20, bottom=20, left=30, right=30)
                             
                     # Custom row height if specified
                     if 'height_val' in row_obj:
