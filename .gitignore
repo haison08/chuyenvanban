@@ -25,3 +25,4 @@ temp_pages/
 # OS files
 .DS_Store
 Thumbs.db
+bin/
