@@ -451,33 +451,132 @@
       });
     }
 
+    // Check if a table is actually a layout table (administrative approval, signatures, or header blocks)
+    function isLayoutTable(elem) {
+      if (!elem || elem.type !== 'table') return false;
+      if (elem.has_border === false) return true;
+      
+      const rows = elem.rows || [];
+      if (rows.length === 0) return true;
+      
+      let allText = '';
+      let maxCols = 0;
+      rows.forEach(r => {
+        const cells = r.cells || [];
+        if (cells.length > maxCols) maxCols = cells.length;
+        cells.forEach(c => {
+          allText += ' ' + (c.text || '');
+        });
+      });
+      
+      const lower = allText.toLowerCase();
+      
+      // Keywords for Vietnamese administrative layout blocks (never should have borders)
+      const layoutKeywords = [
+        'xét, đề nghị', 'đề nghị của đảng', 'đề nghị của chi bộ', 'kính gửi',
+        'chi bộ', 'đảng uỷ', 'đảng ủy', 'ban thường vụ', 't/m', 't/m.', 't.m',
+        'người khai', 'ký, ghi rõ', 'ký và ghi rõ', 'xác nhận của', 'nơi nhận',
+        'chủ tịch', 'bí thư', 'phó bí thư', 'thủ trưởng', 'giám đốc',
+        'cộng hòa xã hội', 'độc lập - tự do'
+      ];
+      
+      const hasKeyword = layoutKeywords.some(kw => lower.includes(kw));
+      // Tables with administrative layout keywords and <= 4 columns are 100% borderless layout tables
+      if (hasKeyword && maxCols <= 4) {
+        return true;
+      }
+      
+      // 1-row layout tables (e.g. template tag or 2-column header)
+      if (rows.length === 1 && maxCols <= 2) {
+        return true;
+      }
+      
+      return false;
+    }
+
+    // Format individual lines in layout table cells according to administrative standards
+    function formatLayoutCellLine(line, defaultAlign) {
+      const trimmed = line.trim();
+      let bold = false;
+      let italic = false;
+      let align = defaultAlign || 'center';
+      
+      // Title lines: Bold, Center
+      if (/^(XÉT,\s*ĐỀ\s*NGHỊ|T\/M|NGƯỜI\s*KHAI|BÍ\s*THƯ|PHÓ\s*BÍ\s*THƯ|CHỦ\s*TỊCH|BAN\s*THƯỜNG\s*VỤ|TRƯỞNG\s*BAN)/i.test(trimmed)) {
+        bold = true;
+        align = 'center';
+      } 
+      // Parentheses note lines: "(Ký, ghi rõ...)" -> Italic, not bold, Center
+      else if (/^\((ký|ghi\s*rõ|đóng\s*dấu|chữ\s*ký)/i.test(trimmed) || /\(ký,?\s*ghi/i.test(trimmed)) {
+        italic = true;
+        bold = false;
+        align = 'center';
+      }
+      // Date lines: "..., ngày ... tháng ... năm ..." -> Italic, Center
+      else if (/(\.{2,},?\s*ngày|ngày\s+\.{2,}|tháng\s+\d+|tháng\s+\.{2,})/i.test(trimmed) && /năm\s+(\d{4}|\.{2,})/i.test(trimmed)) {
+        italic = true;
+        bold = false;
+        align = 'center';
+      }
+      // Administrative body lines: "Kính gửi:...", "Đề nghị...", "(có danh sách...)" -> Regular, Left-aligned
+      else if (/^(Kính\s*gửi|Đề\s*nghị|cho\s*đảng|đảng\s*viên|\(có\s*danh\s*sách)/i.test(trimmed)) {
+        bold = false;
+        italic = false;
+        align = 'left';
+      }
+      
+      return { text: trimmed, bold, italic, align };
+    }
+
     // Post-process AI response to fix common issues
     function postProcessAIResponse(data) {
       if (!data || !data.elements) return data;
       
-      data.elements.forEach(elem => {
+      const newElements = [];
+      const elements = data.elements;
+
+      for (let i = 0; i < elements.length; i++) {
+        const elem = elements[i];
+
         // Fix signature_block: ensure each signatory/recipient item has proper line breaks
         if (elem.type === 'signature_block') {
           elem.recipients = fixMultilineItems(elem.recipients || []);
           elem.signatory = fixMultilineItems(elem.signatory || []);
+          newElements.push(elem);
+          continue;
+        }
+
+        // Detect if two consecutive elements are separate approval blocks (e.g. Dang Uy and Chi Bo)
+        // and merge them into a single 2-column borderless table
+        if (i < elements.length - 1) {
+          const nextElem = elements[i + 1];
+          const text1 = (elem.text || (elem.rows && elem.rows[0] && elem.rows[0].cells && elem.rows[0].cells[0] && elem.rows[0].cells[0].text) || '').toLowerCase();
+          const text2 = (nextElem.text || (nextElem.rows && nextElem.rows[0] && nextElem.rows[0].cells && nextElem.rows[0].cells[0] && nextElem.rows[0].cells[0].text) || '').toLowerCase();
+          
+          const isApproval1 = text1.includes('đảng uỷ') || text1.includes('đảng ủy') || text1.includes('xét, đề nghị');
+          const isApproval2 = text2.includes('chi bộ') || text2.includes('xét, đề nghị');
+          
+          if (isApproval1 && isApproval2 && elem.type !== 'table' && nextElem.type !== 'table') {
+            newElements.push({
+              type: 'table',
+              has_border: false,
+              rows: [{
+                cells: [
+                  { text: fixConcatenatedText(elem.text || ''), align: 'center' },
+                  { text: fixConcatenatedText(nextElem.text || ''), align: 'center' }
+                ]
+              }]
+            });
+            i++; // skip nextElem
+            continue;
+          }
         }
         
-        // Fix table cells: ensure multiline text uses \n properly
-        if (elem.type === 'table' && elem.rows) {
-          elem.rows.forEach(row => {
-            if (row.cells) {
-              row.cells.forEach(cell => {
-                if (cell.text && typeof cell.text === 'string') {
-                  // Fix common Gemini concatenation issues
-                  cell.text = fixConcatenatedText(cell.text);
-                }
-              });
-            }
-          });
-        }
-        
-        // Fix borderless layout tables (signature approval blocks at bottom)
-        if (elem.type === 'table' && elem.has_border === false) {
+        // Fix table cells & auto-detect borderless layout tables
+        if (elem.type === 'table') {
+          if (isLayoutTable(elem)) {
+            elem.has_border = false;
+          }
           if (elem.rows) {
             elem.rows.forEach(row => {
               if (row.cells) {
@@ -490,8 +589,11 @@
             });
           }
         }
-      });
+        
+        newElements.push(elem);
+      }
       
+      data.elements = newElements;
       return data;
     }
     
@@ -516,16 +618,18 @@
     function fixConcatenatedText(text) {
       if (!text || typeof text !== 'string') return text;
       
-      // Pattern: "Kính gửi:...Đề nghị" -> "Kính gửi:...\nĐề nghị"
-      text = text.replace(/(\.{3,})\s*(Đề\s+nghị)/g, '$1\n$2');
-      // Pattern: "đảng viên...T/M" -> "đảng viên...\nT/M"
-      text = text.replace(/(\.{3,})\s*(T\/M)/g, '$1\n$2');
-      // Pattern: "năm 2026T/M" or "năm 2026 T/M" on same content -> split
-      text = text.replace(/(năm\s+\d{4})\s*(T\/M)/g, '$1\n$2');
-      // Pattern: "kèm theo)...,ngày" -> "kèm theo)\n...,ngày"
-      text = text.replace(/(\))\s*(\.{2,},?\s*ngày)/g, '$1\n$2');
-      // Pattern: "họ và tên)..." -> split if followed by significant text
-      text = text.replace(/(họ\s+và\s+tên\))\s*([A-ZĐ])/g, '$1\n$2');
+      // Pattern: dots followed by administrative keywords
+      text = text.replace(/(\.{3,})\s*(Đề\s+nghị|Kính\s+gửi|cho\s+đảng|đảng\s+viên|T\/M|NGƯỜI|BÍ\s+THƯ|CHỦ\s+TỊCH|\(có\s+danh\s+sách|ngày\s+[0-9\.])/gi, '$1\n$2');
+      // Pattern: closing paren followed by date or section
+      text = text.replace(/(\))\s*(\.{2,},?\s*ngày|ngày\s+\.{2,}|[A-ZĐ])/g, '$1\n$2');
+      // Pattern: year followed by signatory/title
+      text = text.replace(/(năm\s+(\d{4}|\.{2,}))\s*(T\/M|NGƯỜI|KÝ|TRƯỞNG|BÍ\s+THƯ|CHỦ\s+TỊCH)/gi, '$1\n$3');
+      // Pattern: signature note "(Ký, ghi rõ họ và tên)" followed by name or other text
+      text = text.replace(/(\((?:Ký|ghi\s*rõ|đóng\s*dấu)[^\)]*\))\s*([A-ZĐa-z])/gi, '$1\n$2');
+      // Pattern: "đảng viên..." followed by date or TM
+      text = text.replace(/(đảng\s+viên\s*\.{2,})\s*(\.{2,},?\s*ngày|T\/M)/gi, '$1\n$2');
+      // Pattern: "kèm theo)" followed by dots/date
+      text = text.replace(/(\(có[^\)]*\))\s*(\.{2,},?\s*ngày|ngày)/gi, '$1\n$2');
       
       return text;
     }
@@ -803,12 +907,12 @@ Trả về DUY NHẤT một khối mã JSON hợp lệ:
             });
 
             const cellL = new TableCell({
-              width: { size: 4400, type: WidthType.DXA },
+              width: { size: isLandscape ? 6800 : 4400, type: WidthType.DXA },
               borders: { top: noBorder, bottom: noBorder, left: noBorder, right: noBorder },
               children: leftParas.length ? leftParas : [new Paragraph({ text: '' })]
             });
             const cellR = new TableCell({
-              width: { size: 5400, type: WidthType.DXA },
+              width: { size: isLandscape ? 8300 : 5400, type: WidthType.DXA },
               borders: { top: noBorder, bottom: noBorder, left: noBorder, right: noBorder },
               children: rightParas.length ? rightParas : [new Paragraph({ text: '' })]
             });
@@ -828,10 +932,12 @@ Trả về DUY NHẤT một khối mã JSON hợp lệ:
             const numCols = maxCols || 1;
             const numRows = rowsData.length;
 
-            // Border Logic: respect has_border from AI, otherwise infer
+            // Border Logic: check layout table first to eliminate spurious borders
+            const isLayout = isLayoutTable(elem);
             let hasBorder = elem.has_border;
-            if (hasBorder === undefined) {
-              // Layout tables (1-row or 2-col without content suggesting a real table) should NOT have borders
+            if (isLayout) {
+              hasBorder = false;
+            } else if (hasBorder === undefined) {
               hasBorder = !(numRows <= 1 || numCols <= 2);
             }
 
@@ -865,11 +971,21 @@ Trả về DUY NHẤT một khối mã JSON hợp lệ:
             const tableRows = rowsData.map((rowObj, rIdx) => {
               const cells = rowObj.cells || [];
               const rowCells = [];
+              let currentColIdx = 0;
 
-              for (let cPos = 0; cPos < numCols; cPos++) {
-                const cellInfo = cells[cPos] || { text: '' };
+              for (let cIdx = 0; cIdx < cells.length; cIdx++) {
+                const cellInfo = cells[cIdx] || { text: '' };
                 const text = cellInfo.text || '';
-                const isTemplateLabel = (!hasBorder && (text.toLowerCase().includes('mẫu') && numRows === 1 && numCols === 2));
+                const span = Math.max(1, cellInfo.colspan || 1);
+
+                // Calculate width summing spanning columns
+                let cellWidth = 0;
+                for (let s = 0; s < span; s++) {
+                  cellWidth += (colWidths[currentColIdx + s] || Math.round(availableWidthDxa / numCols));
+                }
+                currentColIdx += span;
+
+                const isTemplateLabel = (!hasBorder && (text.toLowerCase().includes('mẫu') && numRows === 1 && numCols <= 2));
 
                 const cellBorder = isTemplateLabel ? {
                   top: singleBorder, bottom: singleBorder, left: singleBorder, right: singleBorder
@@ -884,18 +1000,28 @@ Trả về DUY NHẤT một khối mã JSON hợp lệ:
                   const rawLines = String(text).split('\n');
                   if (rawLines.length > 1) {
                     // Each line becomes its own paragraph for proper line breaks
-                    cellChildren = rawLines.map((line, lIdx) => createSingleParagraph({
-                      text: line.trim(),
-                      bold: !!cellInfo.bold,
-                      italic: !!cellInfo.italic,
-                      align: cellInfo.align || (hasBorder ? 'center' : 'left'),
-                      size: cellInfo.size || cellFontSize,
-                      space_before: (lIdx === 0 ? 0 : 1),
-                      space_after: (lIdx === rawLines.length - 1 ? 2 : 1),
-                      line_spacing: 1.08
-                    }));
+                    cellChildren = rawLines.map((line, lIdx) => {
+                      let pData = {
+                        text: line.trim(),
+                        bold: !!cellInfo.bold,
+                        italic: !!cellInfo.italic,
+                        align: cellInfo.align || (hasBorder ? 'center' : 'left'),
+                        size: cellInfo.size || cellFontSize,
+                        space_before: (lIdx === 0 ? 0 : 1),
+                        space_after: (lIdx === rawLines.length - 1 ? 2 : 1),
+                        line_spacing: 1.08
+                      };
+                      if (isLayout) {
+                        const fmt = formatLayoutCellLine(line, cellInfo.align);
+                        pData.text = fmt.text;
+                        pData.bold = fmt.bold;
+                        pData.italic = fmt.italic;
+                        pData.align = fmt.align;
+                      }
+                      return createSingleParagraph(pData);
+                    });
                   } else {
-                    cellChildren.push(createSingleParagraph({
+                    let pData = {
                       text: text,
                       bold: !!cellInfo.bold,
                       italic: !!cellInfo.italic,
@@ -904,7 +1030,15 @@ Trả về DUY NHẤT một khối mã JSON hợp lệ:
                       space_before: 0,
                       space_after: 2,
                       line_spacing: 1.05
-                    }));
+                    };
+                    if (isLayout) {
+                      const fmt = formatLayoutCellLine(text, cellInfo.align);
+                      pData.text = fmt.text;
+                      pData.bold = fmt.bold;
+                      pData.italic = fmt.italic;
+                      pData.align = fmt.align;
+                    }
+                    cellChildren.push(createSingleParagraph(pData));
                   }
                 }
 
@@ -914,15 +1048,28 @@ Trả về DUY NHẤT một khối mã JSON hợp lệ:
                 }
 
                 rowCells.push(new TableCell({
-                  width: { size: colWidths[cPos] || 1000, type: WidthType.DXA },
+                  width: { size: cellWidth || 1000, type: WidthType.DXA },
                   borders: cellBorder,
-                  columnSpan: (cellInfo.colspan && cellInfo.colspan > 1) ? cellInfo.colspan : undefined,
+                  columnSpan: span > 1 ? span : undefined,
                   rowSpan: (cellInfo.rowspan && cellInfo.rowspan > 1) ? cellInfo.rowspan : undefined,
                   verticalAlign: VerticalAlign.CENTER,
                   margins: { top: 40, bottom: 40, left: 60, right: 60 },
                   children: cellChildren
                 }));
               }
+
+              // Fill missing cells if any
+              while (currentColIdx < numCols) {
+                rowCells.push(new TableCell({
+                  width: { size: colWidths[currentColIdx] || 1000, type: WidthType.DXA },
+                  borders: hasBorder ? undefined : { top: noBorder, bottom: noBorder, left: noBorder, right: noBorder },
+                  verticalAlign: VerticalAlign.CENTER,
+                  margins: { top: 40, bottom: 40, left: 60, right: 60 },
+                  children: [new Paragraph({ text: '' })]
+                }));
+                currentColIdx++;
+              }
+
               return new TableRow({ children: rowCells });
             });
 
