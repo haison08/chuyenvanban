@@ -344,7 +344,7 @@
       });
     }
 
-    // Convert PDF page to base64 JPEG
+    // Convert PDF page to base64 JPEG (Tối ưu độ phân giải & nén thông minh để tăng tốc AI)
     async function convertPdfToImages(file) {
       const arrayBuffer = await file.arrayBuffer();
       const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
@@ -352,13 +352,18 @@
       for (let i = 1; i <= pdf.numPages; i++) {
         setStep(1, Math.round((i / pdf.numPages) * 20), `Đang trích xuất trang ${i}/${pdf.numPages}...`);
         const page = await pdf.getPage(i);
-        const viewport = page.getViewport({ scale: 2.0 });
+        const unscaledViewport = page.getViewport({ scale: 1.0 });
+        // Tính tỷ lệ sao cho chiều lớn nhất khoảng 1700px (chuẩn tối ưu cho AI OCR không bị nặng mạng)
+        const targetDim = 1700;
+        const maxOrig = Math.max(unscaledViewport.width, unscaledViewport.height);
+        const scale = Math.min(2.0, Math.max(1.2, targetDim / maxOrig));
+        const viewport = page.getViewport({ scale });
         const canvas = document.createElement('canvas');
-        canvas.width = viewport.width;
-        canvas.height = viewport.height;
+        canvas.width = Math.round(viewport.width);
+        canvas.height = Math.round(viewport.height);
         const ctx = canvas.getContext('2d');
         await page.render({ canvasContext: ctx, viewport }).promise;
-        const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.84);
         const b64 = dataUrl.split(',')[1];
         images.push({ pageNum: i, b64, mimeType: 'image/jpeg' });
       }
@@ -372,7 +377,7 @@
         reader.onload = (e) => {
           const img = new Image();
           img.onload = () => {
-            const maxDim = 2400;
+            const maxDim = 1700;
             let w = img.width;
             let h = img.height;
             if (w > maxDim || h > maxDim) {
@@ -389,7 +394,7 @@
             canvas.height = h;
             const ctx = canvas.getContext('2d');
             ctx.drawImage(img, 0, 0, w, h);
-            const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
+            const dataUrl = canvas.toDataURL('image/jpeg', 0.84);
             const b64 = dataUrl.split(',')[1];
             resolve([{ pageNum: 1, b64, mimeType: 'image/jpeg' }]);
           };
@@ -647,7 +652,7 @@ Trả về DUY NHẤT một khối mã JSON hợp lệ:
   "elements": []
 }`;
 
-      const candidateModels = ["gemini-3.8-flash", "gemini-flash-latest", "gemini-2.5-flash", "gemini-3.5-flash", "gemini-flash-lite-latest"];
+      const candidateModels = ["gemini-3.8-flash", "gemini-3.5-flash", "gemini-flash-lite-latest", "gemini-2.5-flash-lite"];
       let lastError = null;
 
       for (const model of candidateModels) {
@@ -1085,13 +1090,35 @@ Trả về DUY NHẤT một khối mã JSON hợp lệ:
           pageImages = await convertImageToBase64(currentFile);
         }
 
-        const pagesData = [];
-        for (let idx = 0; idx < pageImages.length; idx++) {
-          const pct = 25 + Math.round(((idx + 1) / pageImages.length) * 50);
-          setStep(2, pct, `AI Vision đang đọc & phân tích thể thức trang ${idx + 1}/${pageImages.length}...`);
-          const data = await analyzeWithGemini(pageImages[idx]);
-          pagesData.push(data);
+        // Xử lý song song các trang để tăng tốc độ tối đa
+        const totalPages = pageImages.length;
+        let completedCount = 0;
+        setStep(2, 25, totalPages > 1 
+          ? `AI Vision đang phân tích song song ${totalPages} trang tài liệu...` 
+          : `AI Vision đang đọc & phân tích cấu trúc tài liệu...`);
+
+        async function processPage(pageImg, idx) {
+          const data = await analyzeWithGemini(pageImg);
+          completedCount++;
+          const pct = 25 + Math.round((completedCount / totalPages) * 50);
+          setStep(2, pct, `AI Vision đã xử lý xong ${completedCount}/${totalPages} trang...`);
+          return { idx, data };
         }
+
+        // Concurrency tối đa 3 trang cùng lúc
+        const CONCURRENCY = 3;
+        const pageResults = [];
+        for (let i = 0; i < pageImages.length; i += CONCURRENCY) {
+          const chunk = pageImages.slice(i, i + CONCURRENCY);
+          const chunkResults = await Promise.all(
+            chunk.map((img, cIdx) => processPage(img, i + cIdx))
+          );
+          pageResults.push(...chunkResults);
+        }
+
+        // Sắp xếp lại đúng thứ tự trang 1, 2, 3...
+        pageResults.sort((a, b) => a.idx - b.idx);
+        const pagesData = pageResults.map(r => r.data);
 
         setStep(3, 85, 'Đang căn chỉnh bảng biểu, kiểm tra viền khung và bố cục...');
         await new Promise(r => setTimeout(r, 400));
