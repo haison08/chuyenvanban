@@ -117,6 +117,21 @@
 
         <div class="options-body" id="optionsContent">
           <div class="options-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.25rem; margin-top: 0.5rem;">
+            <div class="form-group" style="grid-column: 1 / -1;">
+              <div style="background: rgba(56, 189, 248, 0.07); border: 1px solid rgba(56, 189, 248, 0.25); border-radius: 8px; padding: 0.85rem 1rem;">
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.4rem;">
+                  <span style="font-weight: 600; font-size: 0.88rem; color: #38bdf8; display: flex; align-items: center; gap: 0.4rem;">
+                    ⚡ Cloudflare Worker Proxy (Tự động dùng AI không cần API Key):
+                  </span>
+                  <span id="workerStatusBadge" style="font-size: 0.75rem; padding: 2px 8px; border-radius: 999px; background: rgba(56, 189, 248, 0.2); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.4);">Tùy chọn</span>
+                </div>
+                <input type="text" id="workerUrlInput" class="form-input" placeholder="https://gemini-proxy.<subdomain>.workers.dev" style="font-family: monospace; font-size: 0.85rem;">
+                <span class="input-hint" style="font-size: 0.78rem; color: #94a3b8; margin-top: 0.35rem; display: block; line-height: 1.4;">
+                  💡 Khi điền URL Cloudflare Worker proxy, bạn và bất kỳ ai vào web trên mọi máy tính đều <b>không cần nhập Google API Key</b>.
+                </span>
+              </div>
+            </div>
+
             <div class="form-group">
               <label for="fontSelect" class="form-label">Phông chữ xuất bản:</label>
               <select id="fontSelect" class="form-select">
@@ -128,7 +143,7 @@
 
             <div class="form-group">
               <label for="apiKeyInput" class="form-label" style="display: flex; justify-content: space-between; align-items: center;">
-                <span>Google Gemini API Key:</span>
+                <span>Google Gemini API Key (Tùy chọn khi có Worker):</span>
                 <a href="https://aistudio.google.com/apikey" target="_blank" class="link-external" style="color: #38bdf8; font-size: 0.85rem; text-decoration: none; font-weight: 500;">Lấy khóa API miễn phí ↗</a>
               </label>
               <div style="position: relative; display: flex; align-items: center;">
@@ -138,7 +153,7 @@
                 </button>
               </div>
               <span class="input-hint" style="font-size: 0.8rem; color: #94a3b8; margin-top: 0.35rem; display: block; line-height: 1.4;">
-                💡 Khóa API được lưu vĩnh viễn trên trình duyệt của bạn (LocalStorage). Chỉ cần dán 1 lần là dùng mãi mãi!
+                💡 Khóa API cá nhân (nếu muốn dùng khóa riêng thay cho Cloudflare Worker proxy).
               </span>
             </div>
           </div>
@@ -267,6 +282,8 @@
     const optionsContent = document.getElementById('optionsContent');
     const apiKeyInput = document.getElementById('apiKeyInput');
     const toggleApiKeyVisibility = document.getElementById('toggleApiKeyVisibility');
+    const workerUrlInput = document.getElementById('workerUrlInput');
+    const workerStatusBadge = document.getElementById('workerStatusBadge');
     const fontSelect = document.getElementById('fontSelect');
 
     const processWrapper = document.getElementById('processWrapper');
@@ -285,6 +302,39 @@
     let generatedBlob = null;
     let generatedFileName = "Tai_Lieu_Chuyen_Doi.docx";
 
+    // URL mặc định của Cloudflare Worker (nếu người dùng đã cấu hình)
+    const DEFAULT_WORKER_URL = "";
+
+    // Load & Save Worker URL from localStorage
+    if (workerUrlInput) {
+      const savedWorker = localStorage.getItem('haison_worker_url') || DEFAULT_WORKER_URL;
+      if (savedWorker) workerUrlInput.value = savedWorker;
+
+      const updateWorkerState = () => {
+        const val = workerUrlInput.value.trim();
+        if (val) {
+          localStorage.setItem('haison_worker_url', val);
+          if (workerStatusBadge) {
+            workerStatusBadge.textContent = 'Đang hoạt động';
+            workerStatusBadge.style.background = '#0284c7';
+            workerStatusBadge.style.color = '#ffffff';
+            workerStatusBadge.style.border = 'none';
+          }
+        } else {
+          localStorage.removeItem('haison_worker_url');
+          if (workerStatusBadge) {
+            workerStatusBadge.textContent = 'Tùy chọn';
+            workerStatusBadge.style.background = 'rgba(56, 189, 248, 0.2)';
+            workerStatusBadge.style.color = '#38bdf8';
+            workerStatusBadge.style.border = '1px solid rgba(56, 189, 248, 0.4)';
+          }
+        }
+      };
+      updateWorkerState();
+      workerUrlInput.addEventListener('input', updateWorkerState);
+      workerUrlInput.addEventListener('change', updateWorkerState);
+    }
+
     // Load saved API Key from localStorage
     const savedKey = localStorage.getItem('haison_gemini_key') || '';
     if (savedKey) {
@@ -294,6 +344,8 @@
       const val = apiKeyInput.value.trim();
       if (val) {
         localStorage.setItem('haison_gemini_key', val);
+      } else {
+        localStorage.removeItem('haison_gemini_key');
       }
     };
     apiKeyInput.addEventListener('input', saveApiKeyToStorage);
@@ -635,7 +687,7 @@
     }
 
     // Call Gemini API with Fallback
-    async function analyzeWithGemini(pageImage, apiKey) {
+    async function analyzeWithGemini(pageImage, apiKey, workerUrl) {
       const prompt = `Bạn là một chuyên gia phân tích thị giác và bóc tách cấu trúc tài liệu văn bản chuyên nghiệp.
 Nhiệm vụ của bạn là đọc hình ảnh trang tài liệu này và chuyển đổi thành cấu trúc JSON chuẩn xác 100% để tạo file Word (.docx).
 
@@ -693,11 +745,17 @@ Trả về DUY NHẤT một khối mã JSON hợp lệ:
   "elements": []
 }`;
 
-      const candidateModels = ["gemini-2.5-flash", "gemini-3.8-flash", "gemini-flash-latest", "gemini-3.5-flash", "gemini-flash-lite-latest"];
+      const candidateModels = ["gemini-3.8-flash", "gemini-flash-latest", "gemini-2.5-flash", "gemini-3.5-flash", "gemini-flash-lite-latest"];
       let lastError = null;
 
       for (const model of candidateModels) {
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+        let url = "";
+        if (workerUrl && !apiKey) {
+          const cleanWorker = workerUrl.replace(/\/+$/, '');
+          url = `${cleanWorker}/v1beta/models/${model}:generateContent`;
+        } else {
+          url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+        }
         const payload = {
           contents: [{
             parts: [
@@ -1117,14 +1175,18 @@ Trả về DUY NHẤT một khối mã JSON hợp lệ:
       if (!currentFile) return;
 
       const apiKey = apiKeyInput.value.trim();
-      if (!apiKey) {
+      const workerUrl = (workerUrlInput ? workerUrlInput.value.trim() : '') || DEFAULT_WORKER_URL;
+
+      if (!apiKey && !workerUrl) {
         errorCard.style.display = 'block';
-        errorMessage.textContent = 'Vui lòng nhập Google Gemini API Key để AI nhận diện văn bản. Bạn có thể bấm vào liên kết "Lấy khóa API miễn phí ↗" ngay phía trên để lấy khóa trong 30 giây!';
+        errorMessage.textContent = 'Vui lòng thiết lập Cloudflare Worker Proxy URL hoặc nhập Google Gemini API Key để AI nhận diện văn bản!';
         optionsContainer.classList.add('open');
-        apiKeyInput.focus();
+        if (workerUrlInput) workerUrlInput.focus();
+        else apiKeyInput.focus();
         return;
       }
-      localStorage.setItem('haison_gemini_key', apiKey);
+      if (apiKey) localStorage.setItem('haison_gemini_key', apiKey);
+      if (workerUrl) localStorage.setItem('haison_worker_url', workerUrl);
 
       convertBtn.setAttribute('disabled', 'true');
       processWrapper.style.display = 'block';
@@ -1145,7 +1207,7 @@ Trả về DUY NHẤT một khối mã JSON hợp lệ:
         for (let idx = 0; idx < pageImages.length; idx++) {
           const pct = 25 + Math.round(((idx + 1) / pageImages.length) * 50);
           setStep(2, pct, `AI Vision đang đọc & phân tích thể thức trang ${idx + 1}/${pageImages.length}...`);
-          const data = await analyzeWithGemini(pageImages[idx], apiKey);
+          const data = await analyzeWithGemini(pageImages[idx], apiKey, workerUrl);
           pagesData.push(data);
         }
 
