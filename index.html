@@ -826,17 +826,23 @@ Trả về DUY NHẤT một khối mã JSON hợp lệ:
             const rightItems = elem.right || [];
             const leftParas = leftItems.flatMap(i => createMultiParagraphs(i));
             const rightParas = rightItems.flatMap(i => createMultiParagraphs(i));
+            const availableWidth = isLandscape ? 15100 : 9800;
+            const cellLWidth = Math.round(availableWidth * 0.45);
+            const cellRWidth = availableWidth - cellLWidth;
+
             const cellL = new TableCell({
-              width: { size: isLandscape ? 7000 : 4400, type: WidthType.DXA },
+              width: { size: cellLWidth, type: WidthType.DXA },
               borders: { top: noBorder, bottom: noBorder, left: noBorder, right: noBorder },
               children: leftParas.length ? leftParas : [new Paragraph({ text: '' })]
             });
             const cellR = new TableCell({
-              width: { size: isLandscape ? 8500 : 5400, type: WidthType.DXA },
+              width: { size: cellRWidth, type: WidthType.DXA },
               borders: { top: noBorder, bottom: noBorder, left: noBorder, right: noBorder },
               children: rightParas.length ? rightParas : [new Paragraph({ text: '' })]
             });
             children.push(new Table({
+              width: { size: availableWidth, type: WidthType.DXA },
+              columnWidths: [cellLWidth, cellRWidth],
               rows: [new TableRow({ children: [cellL, cellR] })],
               borders: { top: noBorder, bottom: noBorder, left: noBorder, right: noBorder, insideHorizontal: noBorder, insideVertical: noBorder }
             }));
@@ -865,17 +871,24 @@ Trả về DUY NHẤT một khối mã JSON hợp lệ:
               }
             });
 
+            const availableWidth = isLandscape ? 15100 : 9800;
+            const hasRecip = recipItems.length > 0;
+            const cellLWidth = hasRecip ? Math.round(availableWidth * 0.45) : Math.round(availableWidth * 0.38);
+            const cellRWidth = availableWidth - cellLWidth;
+
             const cellL = new TableCell({
-              width: { size: isLandscape ? 6800 : 4400, type: WidthType.DXA },
+              width: { size: cellLWidth, type: WidthType.DXA },
               borders: { top: noBorder, bottom: noBorder, left: noBorder, right: noBorder },
               children: leftParas.length ? leftParas : [new Paragraph({ text: '' })]
             });
             const cellR = new TableCell({
-              width: { size: isLandscape ? 8300 : 5400, type: WidthType.DXA },
+              width: { size: cellRWidth, type: WidthType.DXA },
               borders: { top: noBorder, bottom: noBorder, left: noBorder, right: noBorder },
               children: rightParas.length ? rightParas : [new Paragraph({ text: '' })]
             });
             children.push(new Table({
+              width: { size: availableWidth, type: WidthType.DXA },
+              columnWidths: [cellLWidth, cellRWidth],
               rows: [new TableRow({ children: [cellL, cellR] })],
               borders: { top: noBorder, bottom: noBorder, left: noBorder, right: noBorder, insideHorizontal: noBorder, insideVertical: noBorder }
             }));
@@ -920,8 +933,20 @@ Trả về DUY NHẤT một khối mã JSON hợp lệ:
               const equalWidth = Math.round(availableWidthDxa / numCols);
               colWidths = new Array(numCols).fill(equalWidth);
             } else {
-              // Convert mm to DXA (1mm ≈ 56.7 DXA)
-              colWidths = colWidths.map(w => Math.round(w * 56.7));
+              // Normalize relative widths to fill availableWidthDxa
+              const sum = colWidths.reduce((a, b) => a + b, 0);
+              if (sum > 0) {
+                colWidths = colWidths.map(w => Math.round((w / sum) * availableWidthDxa));
+              } else {
+                const equalWidth = Math.round(availableWidthDxa / numCols);
+                colWidths = new Array(numCols).fill(equalWidth);
+              }
+            }
+
+            // Ensure exact sum matches availableWidthDxa
+            const currentSum = colWidths.reduce((a, b) => a + b, 0);
+            if (colWidths.length > 0 && currentSum !== availableWidthDxa) {
+              colWidths[colWidths.length - 1] += (availableWidthDxa - currentSum);
             }
 
             // Dynamic font size based on column count
@@ -1033,6 +1058,8 @@ Trả về DUY NHẤT một khối mã JSON hợp lệ:
             });
 
             children.push(new Table({
+              width: { size: availableWidthDxa, type: WidthType.DXA },
+              columnWidths: colWidths,
               rows: tableRows,
               borders: tableBorders
             }));

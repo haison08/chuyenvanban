@@ -60,6 +60,32 @@ def set_table_borders(table, val='single', sz='4', color='000000'):
         )
     tblPr.append(tblBorders)
 
+def set_table_width_and_grid(table, col_widths_mm):
+    tblPr = table._tbl.tblPr
+    col_widths_dxa = [int(round(w * 56.7)) for w in col_widths_mm]
+    total_dxa = sum(col_widths_dxa)
+    tblW = tblPr.find(qn('w:tblW'))
+    if tblW is None:
+        tblW = OxmlElement('w:tblW')
+        tblPr.append(tblW)
+    tblW.set(qn('w:type'), 'dxa')
+    tblW.set(qn('w:w'), str(total_dxa))
+    
+    tblGrid = table._tbl.find(qn('w:tblGrid'))
+    if tblGrid is not None:
+        table._tbl.remove(tblGrid)
+    tblGrid = OxmlElement('w:tblGrid')
+    for w in col_widths_dxa:
+        col = OxmlElement('w:gridCol')
+        col.set(qn('w:w'), str(w))
+        tblGrid.append(col)
+    tbl_children = list(table._tbl)
+    idx = tbl_children.index(tblPr) if tblPr in tbl_children else -1
+    if idx >= 0:
+        table._tbl.insert(idx + 1, tblGrid)
+    else:
+        table._tbl.append(tblGrid)
+
 def parse_align(align_str):
     a = str(align_str).lower().strip()
     if a == 'center':
@@ -192,8 +218,11 @@ def build_docx_from_structure(doc_data, output_path, options=None):
                 c_l, c_r = tbl.cell(0, 0), tbl.cell(0, 1)
                 
                 is_landscape = (current_orientation == 'landscape')
-                c_l.width = Mm(125 if is_landscape else 78)
-                c_r.width = Mm(142 if is_landscape else 95)
+                wl = 125 if is_landscape else 78
+                wr = 142 if is_landscape else 95
+                c_l.width = Mm(wl)
+                c_r.width = Mm(wr)
+                set_table_width_and_grid(tbl, [wl, wr])
                 set_cell_margins(c_l, top=0, bottom=0, left=0, right=0)
                 set_cell_margins(c_r, top=0, bottom=0, left=0, right=0)
                 
@@ -211,6 +240,7 @@ def build_docx_from_structure(doc_data, output_path, options=None):
                 box_tbl.alignment = WD_TABLE_ALIGNMENT.CENTER
                 c = box_tbl.cell(0, 0)
                 c.width = Mm(145)
+                set_table_width_and_grid(box_tbl, [145])
                 set_cell_margins(c, top=60, bottom=60, left=120, right=120)
                 set_cell_borders(c, 
                                  top={'val': 'single', 'sz': '6', 'color': '000000'},
@@ -227,6 +257,7 @@ def build_docx_from_structure(doc_data, output_path, options=None):
                 c_nn, c_sig = sig_tbl.cell(0, 0), sig_tbl.cell(0, 1)
                 c_nn.width = Mm(75)
                 c_sig.width = Mm(95)
+                set_table_width_and_grid(sig_tbl, [75, 95])
                 set_cell_margins(c_nn, top=0, bottom=0, left=0, right=0)
                 set_cell_margins(c_sig, top=0, bottom=0, left=0, right=0)
                 
@@ -309,6 +340,7 @@ def build_docx_from_structure(doc_data, output_path, options=None):
                     set_table_borders(table, val='none', sz='0', color='auto')
                 
                 # Apply column widths and cell padding
+                set_table_width_and_grid(table, col_widths)
                 for r_idx, r_elem in enumerate(table.rows):
                     for c_idx, w_mm in enumerate(col_widths):
                         if c_idx < len(r_elem.cells):
