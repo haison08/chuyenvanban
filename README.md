@@ -1,6 +1,8 @@
 # Haison dep trai - AI PDF/Image to Word Converter 🚀
 
-[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/haison08/chuyenvanban)
+[![GitHub Pages](https://img.shields.io/badge/Website-GitHub%20Pages-2ea44f?style=for-the-badge&logo=github)](https://haison08.github.io/chuyenvanban)
+
+🌐 **Truy cập trực tiếp tại**: [https://haison08.github.io/chuyenvanban](https://haison08.github.io/chuyenvanban)
 
 Ứng dụng Web AI chuyển đổi tài liệu PDF/Hình ảnh (văn bản hành chính, kế hoạch, quyết định, danh sách Đảng viên/cán bộ) sang file Microsoft Word (.docx) chuẩn thể thức Việt Nam 100%.
 
