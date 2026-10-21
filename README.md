@@ -98,3 +98,8 @@ Mở trình duyệt truy cập: **`http://localhost:5001`**
 - ✅ **Kiểm tra khung viền**: Bảng xét duyệt 2 cột ("Đảng uỷ" / "Chi bộ") và khối chữ ký giữ nguyên trạng thái không viền (borderless layout).
 - ✅ **Kiểm tra giao diện Web**: File `index.html` và `static/css/style.css` đồng bộ 100%, bổ sung lưới tính năng nổi bật (Features Grid), sửa lỗi hiển thị file input và drop zone.
 - ✅ **Kiểm thử Python Backend**: File test `outputs/test_verify_layout.docx` sinh ra thành công với kích thước 44.5 KB, cấu trúc XML hợp lệ hoàn toàn.
+- ✅ **Nâng cấp Mô hình Gemini 3.8 Flash & Loại bỏ Gemini 2.5 Deprecated**:
+  - Google đã khai tử toàn bộ họ mô hình Gemini 2.5 (báo lỗi 404 cho tài khoản mới và khuyến nghị chuyển sang `gemini-3.8-flash`).
+  - Hệ thống đã xóa triệt để `gemini-2.5-flash` và thiết lập `gemini-3.8-flash` làm mô hình ưu tiên mặc định hàng đầu.
+  - Tích hợp thêm ô nhập Khóa API cá nhân (lưu trên `localStorage` trình duyệt) để người dùng có thể dùng API key riêng không giới hạn khi máy chủ chung chạm hạn mức Quota 429 của Google.
+
