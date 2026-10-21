@@ -73,6 +73,10 @@ export default {
       // Chuẩn bị headers cho request chuyển tiếp
       const forwardHeaders = new Headers();
       forwardHeaders.set("Content-Type", request.headers.get("Content-Type") || "application/json");
+      const clientIp = request.headers.get("cf-connecting-ip") || request.headers.get("x-real-ip");
+      if (clientIp) {
+        forwardHeaders.set("X-Forwarded-For", clientIp);
+      }
 
       const response = await fetch(targetUrl, {
         method: request.method,
