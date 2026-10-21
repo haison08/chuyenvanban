@@ -17,6 +17,7 @@ outputs/*
 temp_pages/
 *.docx
 *.pdf
+*.log
 
 # Environment & Secret keys
 .env

@@ -173,17 +173,17 @@ def build_docx_from_structure(doc_data, output_path, options=None):
                 sec.orientation = WD_ORIENT.LANDSCAPE
                 sec.page_width = Mm(297)
                 sec.page_height = Mm(210)
-                sec.top_margin = Mm(15)
-                sec.bottom_margin = Mm(15)
-                sec.left_margin = Mm(15)
-                sec.right_margin = Mm(15)
+                sec.top_margin = Mm(20)
+                sec.bottom_margin = Mm(20)
+                sec.left_margin = Mm(20)
+                sec.right_margin = Mm(20)
             else:
                 sec.orientation = WD_ORIENT.PORTRAIT
                 sec.page_width = Mm(210)
                 sec.page_height = Mm(297)
-                sec.top_margin = Mm(18)
-                sec.bottom_margin = Mm(18)
-                sec.left_margin = Mm(22)
+                sec.top_margin = Mm(20)
+                sec.bottom_margin = Mm(20)
+                sec.left_margin = Mm(25)
                 sec.right_margin = Mm(15)
         elif orientation != current_orientation:
             current_orientation = orientation
@@ -192,17 +192,17 @@ def build_docx_from_structure(doc_data, output_path, options=None):
                 sec.orientation = WD_ORIENT.LANDSCAPE
                 sec.page_width = Mm(297)
                 sec.page_height = Mm(210)
-                sec.top_margin = Mm(15)
-                sec.bottom_margin = Mm(15)
-                sec.left_margin = Mm(15)
-                sec.right_margin = Mm(15)
+                sec.top_margin = Mm(20)
+                sec.bottom_margin = Mm(20)
+                sec.left_margin = Mm(20)
+                sec.right_margin = Mm(20)
             else:
                 sec.orientation = WD_ORIENT.PORTRAIT
                 sec.page_width = Mm(210)
                 sec.page_height = Mm(297)
-                sec.top_margin = Mm(18)
-                sec.bottom_margin = Mm(18)
-                sec.left_margin = Mm(22)
+                sec.top_margin = Mm(20)
+                sec.bottom_margin = Mm(20)
+                sec.left_margin = Mm(25)
                 sec.right_margin = Mm(15)
                 
         elements = page.get('elements', [])
@@ -218,8 +218,8 @@ def build_docx_from_structure(doc_data, output_path, options=None):
                 c_l, c_r = tbl.cell(0, 0), tbl.cell(0, 1)
                 
                 is_landscape = (current_orientation == 'landscape')
-                wl = 125 if is_landscape else 78
-                wr = 142 if is_landscape else 95
+                wl = 118 if is_landscape else 76
+                wr = 139 if is_landscape else 94
                 c_l.width = Mm(wl)
                 c_r.width = Mm(wr)
                 set_table_width_and_grid(tbl, [wl, wr])
@@ -255,9 +255,13 @@ def build_docx_from_structure(doc_data, output_path, options=None):
                 sig_tbl.alignment = WD_TABLE_ALIGNMENT.CENTER
                 sig_tbl.autofit = False
                 c_nn, c_sig = sig_tbl.cell(0, 0), sig_tbl.cell(0, 1)
-                c_nn.width = Mm(75)
-                c_sig.width = Mm(95)
-                set_table_width_and_grid(sig_tbl, [75, 95])
+                
+                is_landscape = (current_orientation == 'landscape')
+                wl = 118 if is_landscape else 76
+                wr = 139 if is_landscape else 94
+                c_nn.width = Mm(wl)
+                c_sig.width = Mm(wr)
+                set_table_width_and_grid(sig_tbl, [wl, wr])
                 set_cell_margins(c_nn, top=0, bottom=0, left=0, right=0)
                 set_cell_margins(c_sig, top=0, bottom=0, left=0, right=0)
                 
@@ -269,7 +273,7 @@ def build_docx_from_structure(doc_data, output_path, options=None):
                 signatory_items = elem.get('signatory', [])
                 for item in signatory_items:
                     if item.get('is_space'):
-                        spacing = item.get('space', 35)
+                        spacing = min(40, max(20, item.get('space', 30)))
                         add_styled_paragraph(c_sig, {'text': '', 'space_before': spacing, 'space_after': 0}, default_font=default_font)
                     else:
                         add_styled_paragraph(c_sig, item, default_font=default_font)
@@ -277,11 +281,18 @@ def build_docx_from_structure(doc_data, output_path, options=None):
             elif el_type == 'table':
                 rows_data = elem.get('rows', [])
                 col_widths = elem.get('col_widths', [])
-                num_cols = len(col_widths) if col_widths else (len(rows_data[0].get('cells', [])) if rows_data else 1)
+                
+                # Detect actual max column count with colspan included
+                max_cols = len(col_widths) if col_widths else 0
+                for r in rows_data:
+                    cols_in_r = sum(max(1, c.get('colspan', 1)) for c in r.get('cells', []))
+                    if cols_in_r > max_cols:
+                        max_cols = cols_in_r
+                num_cols = max_cols or 1
                 num_rows = len(rows_data)
                 
                 is_landscape = (current_orientation == 'landscape')
-                available_width_mm = 267 if is_landscape else 173
+                available_width_mm = 257 if is_landscape else 170
                 
                 # Table font size based on column density
                 if num_cols >= 11:
@@ -328,8 +339,13 @@ def build_docx_from_structure(doc_data, output_path, options=None):
                 # Determine if table should have visible borders
                 has_border = elem.get('has_border', None)
                 if has_border is None:
-                    # Layout tables (1 row, or 2-column signature/approval blocks) MUST NOT have borders
-                    if num_rows <= 1 or num_cols <= 2:
+                    all_text = ' '.join(str(c.get('text', '')) for r in rows_data for c in r.get('cells', [])).lower()
+                    is_layout = any(kw in all_text for kw in [
+                        'xét, đề nghị', 'đảng uỷ', 'đảng ủy', 'chi bộ', 'ban thường vụ', 't/m',
+                        'kính gửi', 'nơi nhận', 'người khai', 'ký, ghi rõ', 'chủ tịch', 'bí thư',
+                        'thủ trưởng', 'giám đốc', 'xác nhận của', 'người lập biểu'
+                    ])
+                    if is_layout or num_rows <= 1 or num_cols <= 2:
                         has_border = False
                     else:
                         has_border = True

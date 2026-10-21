@@ -224,6 +224,58 @@
         </div>
       </div>
     </div>
+
+    <!-- Feature Highlights -->
+    <section class="features-grid" style="margin-top: 3.5rem;">
+      <div class="feature-card">
+        <div class="feature-icon bg-cyan">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 20h9"/>
+            <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
+          </svg>
+        </div>
+        <h3 class="feature-title">Văn Bản Soạn Thảo 100%</h3>
+        <p class="feature-desc">Không chèn ảnh đè lên trang. Mọi câu từ đều có thể bôi đen, chỉnh sửa, đổi phông chữ và căn lề linh hoạt.</p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon bg-indigo">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+            <line x1="3" y1="9" x2="21" y2="9"/>
+            <line x1="3" y1="15" x2="21" y2="15"/>
+            <line x1="9" y1="3" x2="9" y2="21"/>
+            <line x1="15" y1="3" x2="15" y2="21"/>
+          </svg>
+        </div>
+        <h3 class="feature-title">Bảng Biểu Đa Tầng Chuẩn Xác</h3>
+        <p class="feature-desc">Tự động tái tạo các bảng biểu phức tạp gồm nhiều tầng tiêu đề gộp ô (colspan, rowspan), phân bổ tỷ lệ cột chuẩn xác.</p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon bg-emerald">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
+            <line x1="8" y1="21" x2="16" y2="21"/>
+            <line x1="12" y1="17" x2="12" y2="21"/>
+          </svg>
+        </div>
+        <h3 class="feature-title">Xoay Khổ Ngang Tự Động</h3>
+        <p class="feature-desc">Nhận diện bảng biểu phụ lục có nhiều cột để tự động tách Section xoay ngang (A4 Landscape) chuẩn thể thức.</p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon bg-violet">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"/>
+            <line x1="15" y1="9" x2="9" y2="15"/>
+            <line x1="9" y1="9" x2="15" y2="15"/>
+          </svg>
+        </div>
+        <h3 class="feature-title">Chuẩn Nghị Định 30/2020/NĐ-CP</h3>
+        <p class="feature-desc">Cân đối chính xác lề trang (Trái 25mm, Phải 15mm, Trên/Dưới 20mm), loại bỏ hoàn toàn viền rác và trang trắng thừa.</p>
+      </div>
+    </section>
   </main>
 
   <footer class="app-footer">
@@ -299,6 +351,8 @@
       }
     });
 
+    const dropZoneContent = document.querySelector('.drop-zone-content');
+
     function handleFileSelect(file) {
       currentFile = file;
       selectedFileName.textContent = file.name;
@@ -306,6 +360,7 @@
       const ext = file.name.split('.').pop().toUpperCase();
       fileTypeIcon.textContent = ext;
 
+      if (dropZoneContent) dropZoneContent.style.display = 'none';
       fileSelectedBar.style.display = 'flex';
       convertBtn.removeAttribute('disabled');
       errorCard.style.display = 'none';
@@ -317,6 +372,7 @@
       currentFile = null;
       fileInput.value = '';
       fileSelectedBar.style.display = 'none';
+      if (dropZoneContent) dropZoneContent.style.display = 'flex';
       convertBtn.setAttribute('disabled', 'true');
     });
 
@@ -421,11 +477,13 @@
       let allText = '';
       let maxCols = 0;
       rows.forEach(r => {
+        let colsInRow = 0;
         const cells = r.cells || [];
-        if (cells.length > maxCols) maxCols = cells.length;
         cells.forEach(c => {
+          colsInRow += Math.max(1, c.colspan || 1);
           allText += ' ' + (c.text || '');
         });
+        if (colsInRow > maxCols) maxCols = colsInRow;
       });
       
       const lower = allText.toLowerCase();
@@ -436,7 +494,9 @@
         'chi bộ', 'đảng uỷ', 'đảng ủy', 'ban thường vụ', 't/m', 't/m.', 't.m',
         'người khai', 'ký, ghi rõ', 'ký và ghi rõ', 'xác nhận của', 'nơi nhận',
         'chủ tịch', 'bí thư', 'phó bí thư', 'thủ trưởng', 'giám đốc',
-        'cộng hòa xã hội', 'độc lập - tự do'
+        'cộng hòa xã hội', 'độc lập - tự do', 'người lập biểu', 'kế toán trưởng',
+        'thủ quỹ', 'xác nhận của cơ quan', 'ban giám đốc', 'trưởng ban', 'phó ban',
+        'trưởng phòng', 'hiệu trưởng', 'mẫu số'
       ];
       
       const hasKeyword = layoutKeywords.some(kw => lower.includes(kw));
@@ -461,7 +521,7 @@
       let align = defaultAlign || 'center';
       
       // Title lines: Bold, Center
-      if (/^(XÉT,\s*ĐỀ\s*NGHỊ|T\/M|NGƯỜI\s*KHAI|BÍ\s*THƯ|PHÓ\s*BÍ\s*THƯ|CHỦ\s*TỊCH|BAN\s*THƯỜNG\s*VỤ|TRƯỞNG\s*BAN)/i.test(trimmed)) {
+      if (/^(XÉT,\s*ĐỀ\s*NGHỊ|T\/M|NGƯỜI\s*KHAI|BÍ\s*THƯ|PHÓ\s*BÍ\s*THƯ|CHỦ\s*TỊCH|BAN\s*THƯỜNG\s*VỤ|TRƯỞNG\s*BAN|HIỆU\s*TRƯỞNG|GIÁM\s*ĐỐC|XÁC\s*NHẬN|CHI\s*BỘ|ĐẢNG\s*UỶ|ĐẢNG\s*ỦY)/i.test(trimmed)) {
         bold = true;
         align = 'center';
       } 
@@ -478,10 +538,15 @@
         align = 'center';
       }
       // Administrative body lines: "Kính gửi:...", "Đề nghị...", "(có danh sách...)" -> Regular, Left-aligned
-      else if (/^(Kính\s*gửi|Đề\s*nghị|cho\s*đảng|đảng\s*viên|\(có\s*danh\s*sách)/i.test(trimmed)) {
+      else if (/^(Kính\s*gửi|Đề\s*nghị|cho\s*đảng|đảng\s*viên|\(có\s*danh\s*sách|\(kèm\s*theo)/i.test(trimmed)) {
         bold = false;
         italic = false;
         align = 'left';
+      }
+      // Person name at bottom of block: Bold, Center
+      else if (/^[A-ZÀ-Ỹ][a-zà-ỹ]+(\s+[A-ZÀ-Ỹ][a-zà-ỹ]+){1,4}$/.test(trimmed) || /^[A-ZÀ-Ỹ\s]{3,35}$/.test(trimmed)) {
+        bold = true;
+        align = 'center';
       }
       
       return { text: trimmed, bold, italic, align };
@@ -579,16 +644,20 @@
       
       // Pattern: dots followed by administrative keywords
       text = text.replace(/(\.{3,})\s*(Đề\s+nghị|Kính\s+gửi|cho\s+đảng|đảng\s+viên|T\/M|NGƯỜI|BÍ\s+THƯ|CHỦ\s+TỊCH|\(có\s+danh\s+sách|ngày\s+[0-9\.])/gi, '$1\n$2');
-      // Pattern: closing paren followed by date or section
-      text = text.replace(/(\))\s*(\.{2,},?\s*ngày|ngày\s+\.{2,}|[A-ZĐ])/g, '$1\n$2');
+      // Pattern: closing paren followed by date, section, or administrative keyword
+      text = text.replace(/(\))\s*(XÉT|ĐỀ\s+NGHỊ|T\/M|NGƯỜI|KÍNH\s+GỬI|\.{2,},?\s*ngày|ngày\s+\d+|ngày\s+\.{2,})/gi, '$1\n$2');
       // Pattern: year followed by signatory/title
-      text = text.replace(/(năm\s+(\d{4}|\.{2,}))\s*(T\/M|NGƯỜI|KÝ|TRƯỞNG|BÍ\s+THƯ|CHỦ\s+TỊCH)/gi, '$1\n$3');
+      text = text.replace(/(năm\s+(\d{4}|\.{2,}))\s*(T\/M|NGƯỜI|KÝ|TRƯỞNG|BÍ\s+THƯ|CHỦ\s+TỊCH|BAN\s+THƯỜNG\s+VỤ|CHI\s+BỘ|ĐẢNG\s+UỶ|ĐẢNG\s+ỦY)/gi, '$1\n$3');
       // Pattern: signature note "(Ký, ghi rõ họ và tên)" followed by name or other text
       text = text.replace(/(\((?:Ký|ghi\s*rõ|đóng\s*dấu)[^\)]*\))\s*([A-ZĐa-z])/gi, '$1\n$2');
       // Pattern: "đảng viên..." followed by date or TM
       text = text.replace(/(đảng\s+viên\s*\.{2,})\s*(\.{2,},?\s*ngày|T\/M)/gi, '$1\n$2');
       // Pattern: "kèm theo)" followed by dots/date
-      text = text.replace(/(\(có[^\)]*\))\s*(\.{2,},?\s*ngày|ngày)/gi, '$1\n$2');
+      text = text.replace(/(\((?:có|kèm)[^\)]*\))\s*(\.{2,},?\s*ngày|ngày|\.{3,})/gi, '$1\n$2');
+      // Pattern: "Kính gửi:......." followed by "Đề nghị..."
+      text = text.replace(/(Kính\s+gửi:[^\n]+?)(Đề\s+nghị|cho\s+đảng)/gi, '$1\n$2');
+      // Pattern: "cho đảng viên..." followed by "(có danh sách..."
+      text = text.replace(/(đảng\s+viên\s*\.{2,}[^\n]*?)(\(có\s+danh\s+sách)/gi, '$1\n$2');
       
       return text;
     }
@@ -804,18 +873,34 @@ Trả về DUY NHẤT một khối mã JSON hợp lệ:
         let orientation = (page.orientation || 'portrait').toLowerCase();
         const elements = page.elements || [];
 
-        // Auto-detect wide tables >= 7 cols -> Force landscape
+        // Auto-detect wide tables >= 6 cols -> Force landscape
         elements.forEach(elem => {
           if (elem.type === 'table') {
             const rows = elem.rows || [];
-            const colCount = (elem.col_widths && elem.col_widths.length) || (rows[0] && rows[0].cells && rows[0].cells.length) || 0;
-            if (colCount >= 7) {
+            let maxColCount = (elem.col_widths && elem.col_widths.length) || 0;
+            rows.forEach(r => {
+              let colsInRow = 0;
+              (r.cells || []).forEach(c => { colsInRow += Math.max(1, c.colspan || 1); });
+              if (colsInRow > maxColCount) maxColCount = colsInRow;
+            });
+            if (maxColCount >= 6) {
               orientation = 'landscape';
             }
           }
         });
 
         const isLandscape = (orientation === 'landscape');
+        const pageWidth = isLandscape ? 16838 : 11906;
+        const pageHeight = isLandscape ? 11906 : 16838;
+
+        // Vietnamese Administrative Standard (Nghị định 30/2020/NĐ-CP):
+        // Portrait: top 20mm (1134 DXA), bottom 20mm (1134 DXA), left 25mm (1417 DXA), right 15mm (850 DXA)
+        // Landscape: top 20mm (1134 DXA), bottom 20mm (1134 DXA), left 20mm (1134 DXA), right 20mm (1134 DXA)
+        const marginTop = 1134;
+        const marginBottom = 1134;
+        const marginLeft = isLandscape ? 1134 : 1417;
+        const marginRight = isLandscape ? 1134 : 850;
+        const availableWidthDxa = pageWidth - marginLeft - marginRight; // 9639 DXA (portrait), 14570 DXA (landscape)
         const children = [];
 
         elements.forEach(elem => {
@@ -826,9 +911,8 @@ Trả về DUY NHẤT một khối mã JSON hợp lệ:
             const rightItems = elem.right || [];
             const leftParas = leftItems.flatMap(i => createMultiParagraphs(i));
             const rightParas = rightItems.flatMap(i => createMultiParagraphs(i));
-            const availableWidth = isLandscape ? 15100 : 9800;
-            const cellLWidth = Math.round(availableWidth * 0.45);
-            const cellRWidth = availableWidth - cellLWidth;
+            const cellLWidth = Math.round(availableWidthDxa * 0.45);
+            const cellRWidth = availableWidthDxa - cellLWidth;
 
             const cellL = new TableCell({
               width: { size: cellLWidth, type: WidthType.DXA },
@@ -841,7 +925,7 @@ Trả về DUY NHẤT một khối mã JSON hợp lệ:
               children: rightParas.length ? rightParas : [new Paragraph({ text: '' })]
             });
             children.push(new Table({
-              width: { size: availableWidth, type: WidthType.DXA },
+              width: { size: availableWidthDxa, type: WidthType.DXA },
               columnWidths: [cellLWidth, cellRWidth],
               rows: [new TableRow({ children: [cellL, cellR] })],
               borders: { top: noBorder, bottom: noBorder, left: noBorder, right: noBorder, insideHorizontal: noBorder, insideVertical: noBorder }
@@ -855,7 +939,7 @@ Trả về DUY NHẤT một khối mã JSON hợp lệ:
             const leftParas = [];
             recipItems.forEach(item => {
               if (item.is_space) {
-                leftParas.push(new Paragraph({ text: '', spacing: { before: Math.round((item.space || 35) * 20) } }));
+                leftParas.push(new Paragraph({ text: '', spacing: { before: Math.round((item.space || 30) * 20) } }));
               } else {
                 createMultiParagraphs(item).forEach(p => leftParas.push(p));
               }
@@ -865,16 +949,16 @@ Trả về DUY NHẤT một khối mã JSON hợp lệ:
             const rightParas = [];
             sigItems.forEach(item => {
               if (item.is_space) {
-                rightParas.push(new Paragraph({ text: '', spacing: { before: Math.round((item.space || 35) * 20) } }));
+                const spVal = Math.min(45, Math.max(20, item.space || 30));
+                rightParas.push(new Paragraph({ text: '', spacing: { before: Math.round(spVal * 20) } }));
               } else {
                 createMultiParagraphs(item).forEach(p => rightParas.push(p));
               }
             });
 
-            const availableWidth = isLandscape ? 15100 : 9800;
             const hasRecip = recipItems.length > 0;
-            const cellLWidth = hasRecip ? Math.round(availableWidth * 0.45) : Math.round(availableWidth * 0.38);
-            const cellRWidth = availableWidth - cellLWidth;
+            const cellLWidth = hasRecip ? Math.round(availableWidthDxa * 0.45) : Math.round(availableWidthDxa * 0.40);
+            const cellRWidth = availableWidthDxa - cellLWidth;
 
             const cellL = new TableCell({
               width: { size: cellLWidth, type: WidthType.DXA },
@@ -887,7 +971,7 @@ Trả về DUY NHẤT một khối mã JSON hợp lệ:
               children: rightParas.length ? rightParas : [new Paragraph({ text: '' })]
             });
             children.push(new Table({
-              width: { size: availableWidth, type: WidthType.DXA },
+              width: { size: availableWidthDxa, type: WidthType.DXA },
               columnWidths: [cellLWidth, cellRWidth],
               rows: [new TableRow({ children: [cellL, cellR] })],
               borders: { top: noBorder, bottom: noBorder, left: noBorder, right: noBorder, insideHorizontal: noBorder, insideVertical: noBorder }
@@ -895,22 +979,28 @@ Trả về DUY NHẤT một khối mã JSON hợp lệ:
           } else if (elType === 'table') {
             const rowsData = elem.rows || [];
             let colWidths = elem.col_widths || [];
-            // Detect actual max column count from all rows
+            // Detect actual max column count from all rows with colspan considered
             let maxCols = colWidths.length || 0;
             rowsData.forEach(row => {
-              const rowColCount = (row.cells || []).length;
-              if (rowColCount > maxCols) maxCols = rowColCount;
+              let colsInRow = 0;
+              (row.cells || []).forEach(c => {
+                colsInRow += Math.max(1, c.colspan || 1);
+              });
+              if (colsInRow > maxCols) maxCols = colsInRow;
             });
             const numCols = maxCols || 1;
             const numRows = rowsData.length;
 
             // Border Logic: check layout table first to eliminate spurious borders
             const isLayout = isLayoutTable(elem);
-            let hasBorder = elem.has_border;
-            if (isLayout) {
+            let hasBorder = false;
+            if (elem.has_border === true && !isLayout) {
+              hasBorder = true;
+            } else if (elem.has_border === false || isLayout) {
               hasBorder = false;
-            } else if (hasBorder === undefined) {
-              hasBorder = !(numRows <= 1 || numCols <= 2);
+            } else if (elem.has_border === undefined) {
+              // Default to borderless unless clearly a grid data table with >= 3 cols and >= 2 rows
+              hasBorder = (numRows >= 2 && numCols >= 3 && !isLayout);
             }
 
             const tableBorders = hasBorder ? {
@@ -921,7 +1011,6 @@ Trả về DUY NHẤT một khối mã JSON hợp lệ:
               insideHorizontal: noBorder, insideVertical: noBorder
             };
 
-            const availableWidthDxa = isLandscape ? 15100 : 9800;
             const isTemplateHeaderTable = (!hasBorder && numRows === 1 && numCols === 2 && rowsData[0] && rowsData[0].cells &&
               ((rowsData[0].cells[1] && String(rowsData[0].cells[1].text || '').includes('Mẫu')) ||
                (rowsData[0].cells[0] && String(rowsData[0].cells[0].text || '').includes('Mẫu'))));
@@ -1079,15 +1168,15 @@ Trả về DUY NHẤT một khối mã JSON hợp lệ:
           properties: {
             page: {
               size: {
-                width: isLandscape ? 16838 : 11906,
-                height: isLandscape ? 11906 : 16838,
+                width: pageWidth,
+                height: pageHeight,
                 orientation: isLandscape ? PageOrientation.LANDSCAPE : PageOrientation.PORTRAIT
               },
               margin: {
-                top: 850,
-                bottom: 850,
-                left: isLandscape ? 850 : 1240,
-                right: 850
+                top: marginTop,
+                bottom: marginBottom,
+                left: marginLeft,
+                right: marginRight
               }
             }
           },
@@ -1187,6 +1276,7 @@ Trả về DUY NHẤT một khối mã JSON hợp lệ:
       currentFile = null;
       fileInput.value = '';
       fileSelectedBar.style.display = 'none';
+      if (dropZoneContent) dropZoneContent.style.display = 'flex';
       convertBtn.setAttribute('disabled', 'true');
     });
 
